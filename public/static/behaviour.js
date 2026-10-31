@@ -11,11 +11,11 @@
       const firstWeekday=(monthDate.getUTCDay()+6)%7;
       const weekCount=Math.ceil((firstWeekday+(month.days||[]).length)/7);
       const cells=(month.days||[]).map(cell=>{
-        if(cell.expense_cents===null)return '';
-        const amount=Number(cell.expense_cents)||0,level=amount>0&&max?Math.max(1,Math.ceil(amount/max*4)):0;
+        const future=cell.expense_cents===null,amount=future?0:(Number(cell.expense_cents)||0),level=amount>0&&max?Math.max(1,Math.ceil(amount/max*4)):0;
         const dayDate=new Date(cell.date+'T00:00:00Z'),weekday=(dayDate.getUTCDay()+6)%7,week=Math.floor((firstWeekday+cell.day-1)/7);
         const dateLabel=dayDate.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
-        return `<span class="calendar-cell level-${level}" style="grid-column:${week+1};grid-row:${weekday+1}" title="${h(dateLabel)} - ${h(money(amount))}" aria-label="${h(dateLabel)}: ${h(money(amount))}"></span>`;
+        const cellClass=future?'level-empty':`level-${level}`,description=future?'Belum terjadi':money(amount);
+        return `<span class="calendar-cell ${cellClass}" style="grid-column:${week+1};grid-row:${weekday+1}" title="${h(dateLabel)} - ${h(description)}" aria-label="${h(dateLabel)}: ${h(description)}"></span>`;
       }).join('');
       return `<div class="calendar-month-group"><div class="calendar-month-header" title="${h(monthDate.getUTCFullYear())}">${h(label)}</div><div class="calendar-month-days" style="grid-template-columns:repeat(${weekCount},9px)">${cells}</div></div>`;
     }).join('');
