@@ -23,7 +23,7 @@ def firebase_services():
         raise RuntimeError("Kredensial Firebase Base64 tidak valid") from exc
 
     import firebase_admin
-    from firebase_admin import credentials, firestore, storage
+    from firebase_admin import credentials, firestore
 
     try:
         firebase_app = firebase_admin.get_app()
@@ -33,7 +33,11 @@ def firebase_services():
             credentials.Certificate(service_account),
             options,
         )
-    bucket = storage.bucket(app=firebase_app) if bucket_name else None
+    if bucket_name:
+        from firebase_admin import storage
+        bucket = storage.bucket(app=firebase_app)
+    else:
+        bucket = None
     return firestore.client(app=firebase_app), bucket
 
 
