@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import calendar
 import csv
 import io
 import json
@@ -166,6 +167,77 @@ def active_accounts_and_transactions():
     return accounts, categories, transactions, wishes, budgets
 
 
+def behavior_summary(transactions, today):
+    current_month = date(today.year, today.month, 1)
+    months = []
+    for offset in range(11, -1, -1):
+        absolute_month = current_month.year * 12 + current_month.month - 1 - offset
+        year, month_index = divmod(absolute_month, 12)
+        months.append(date(year, month_index + 1, 1))
+    start_day = months[0]
+    daily_expenses = {}
+    hour_counts = [0] * 24
+    for tx in transactions:
+        raw_timestamp = str(tx.get("occurred_at", ""))
+        try:
+            timestamp = datetime.fromisoformat(raw_timestamp.replace("Z", "+00:00"))
+            if timestamp.tzinfo:
+                timestamp = timestamp.astimezone(JAKARTA)
+            tx_day = timestamp.date()
+        except ValueError:
+            continue
+        if not start_day <= tx_day <= today:
+            continue
+        hour_counts[timestamp.hour] += 1
+        if tx.get("kind") == "expense":
+            daily_expenses[tx_day] = daily_expenses.get(tx_day, 0) + int(tx.get("amount_cents", 0) or 0)
+
+    weekday_total = weekend_total = weekday_days = weekend_days = 0
+    total_days = (today - start_day).days + 1
+    for offset in range(total_days):
+        day = start_day + timedelta(days=offset)
+        amount = daily_expenses.get(day, 0)
+        if day.weekday() >= 5:
+            weekend_total += amount
+            weekend_days += 1
+        else:
+            weekday_total += amount
+            weekday_days += 1
+
+    month_cells = []
+    for month_start in months:
+        days = []
+        for day_number in range(1, calendar.monthrange(month_start.year, month_start.month)[1] + 1):
+            day = date(month_start.year, month_start.month, day_number)
+            days.append({
+                "day": day_number,
+                "date": day.isoformat(),
+                "expense_cents": daily_expenses.get(day, 0) if day <= today else None,
+            })
+        month_cells.append({
+            "key": month_start.strftime("%Y-%m"),
+            "label": month_start.strftime("%b %Y"),
+            "days": days,
+        })
+
+    busiest_hour = max(range(24), key=hour_counts.__getitem__) if any(hour_counts) else None
+    total_expense = sum(daily_expenses.values())
+    return {
+        "months": month_cells,
+        "hour_counts": hour_counts,
+        "busiest_hour": busiest_hour,
+        "spending": {
+            "weekday_total_cents": weekday_total,
+            "weekend_total_cents": weekend_total,
+            "weekday_average_cents": round(weekday_total / weekday_days) if weekday_days else 0,
+            "weekend_average_cents": round(weekend_total / weekend_days) if weekend_days else 0,
+            "daily_average_cents": round(total_expense / total_days) if total_days else 0,
+            "total_cents": total_expense,
+            "period_days": total_days,
+        },
+    }
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
@@ -230,6 +302,7 @@ def bootstrap():
     try:
         accounts, categories, transactions, wishes, budgets = active_accounts_and_transactions()
         today = now_local().date()
+        behavior = behavior_summary(transactions, today)
         end = request.args.get("end", today.isoformat())
         start = request.args.get("start", today.replace(day=1).isoformat())
         try:
@@ -365,7 +438,7 @@ def bootstrap():
         current_assets = sum(a["balance_cents"] for a in accts)
         wish_stats = {"period_days": wish_days, "current_assets_cents": current_assets, "income_90d_cents": wish_income, "expense_90d_cents": wish_expense, "asset_change_90d_cents": current_assets - assets_before}
         wishes.sort(key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))), reverse=True)
-        return jsonify(accounts=accts, categories=cats, budgets=active_budgets, wishes=wishes, wish_stats=wish_stats, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat})
+        return jsonify(accounts=accts, categories=cats, budgets=active_budgets, wishes=wishes, wish_stats=wish_stats, behavior=behavior, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat})
     except RuntimeError as exc:
         return jsonify(error=str(exc)), 503
 
