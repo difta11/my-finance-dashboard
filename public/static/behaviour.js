@@ -4,23 +4,22 @@
     const calendar=document.querySelector('#spending-calendar');
     if(!months?.length){calendar.innerHTML='<p class="empty">Belum ada data kalender.</p>';return}
     const cells=months.flatMap(month=>month.days||[]),positive=cells.map(cell=>Number(cell.expense_cents)||0).filter(value=>value>0),max=Math.max(...positive,0);
-    const monthHeaders=months.map(month=>{
+    const monthGroups=months.map(month=>{
       const [year,monthNumber]=month.key.split('-').map(Number);
-      const label=new Intl.DateTimeFormat('id-ID',{month:'short',year:'2-digit'}).format(new Date(Date.UTC(year,monthNumber-1,1)));
-      return `<div class="calendar-month-header">${h(label)}</div>`;
-    }).join('');
-    let rows='';
-    for(let dayNumber=1;dayNumber<=31;dayNumber++){
-      rows+=`<div class="calendar-day-label">${dayNumber}</div>`;
-      for(const month of months){
-        const cell=(month.days||[]).find(item=>item.day===dayNumber);
-        if(!cell||cell.expense_cents===null){rows+='<span class="calendar-cell level-empty" aria-hidden="true"></span>';continue}
+      const monthDate=new Date(Date.UTC(year,monthNumber-1,1));
+      const label=new Intl.DateTimeFormat('id-ID',{month:'short'}).format(monthDate);
+      const firstWeekday=(monthDate.getUTCDay()+6)%7;
+      const weekCount=Math.ceil((firstWeekday+(month.days||[]).length)/7);
+      const cells=(month.days||[]).map(cell=>{
+        if(cell.expense_cents===null)return '';
         const amount=Number(cell.expense_cents)||0,level=amount>0&&max?Math.max(1,Math.ceil(amount/max*4)):0;
-        const label=new Date(cell.date+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
-        rows+=`<span class="calendar-cell level-${level}" title="${h(label)} - ${h(money(amount))}" aria-label="${h(label)}: ${h(money(amount))}"></span>`;
-      }
-    }
-    calendar.innerHTML=`<div class="calendar-corner">Hari</div>${monthHeaders}${rows}`;
+        const dayDate=new Date(cell.date+'T00:00:00Z'),weekday=(dayDate.getUTCDay()+6)%7,week=Math.floor((firstWeekday+cell.day-1)/7);
+        const dateLabel=dayDate.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+        return `<span class="calendar-cell level-${level}" style="grid-column:${week+1};grid-row:${weekday+1}" title="${h(dateLabel)} - ${h(money(amount))}" aria-label="${h(dateLabel)}: ${h(money(amount))}"></span>`;
+      }).join('');
+      return `<div class="calendar-month-group"><div class="calendar-month-header" title="${h(monthDate.getUTCFullYear())}">${h(label)}</div><div class="calendar-month-days" style="grid-template-columns:repeat(${weekCount},9px)">${cells}</div></div>`;
+    }).join('');
+    calendar.innerHTML=`<div class="calendar-weekday-axis"><span></span><span>Sen</span><span></span><span>Rab</span><span></span><span>Jum</span><span></span><span></span></div><div class="calendar-month-groups">${monthGroups}</div>`;
   };
   const renderHours=(counts,busiest)=>{
     const chart=document.querySelector('#hour-chart'),values=Array.from({length:24},(_,hour)=>Number(counts?.[hour])||0),max=Math.max(...values,1);
