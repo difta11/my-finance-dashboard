@@ -8,6 +8,7 @@ import json
 import os
 import re
 import secrets
+import unicodedata
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -68,6 +69,11 @@ def money(value, allow_zero=False):
         return cents
     except (InvalidOperation, ValueError):
         raise ValueError("Nominal harus angka positif")
+
+
+def normalize_account_name(value):
+    """Normalize spacing, compatibility characters, and case for account names."""
+    return " ".join(unicodedata.normalize("NFKC", str(value)).split()).casefold()
 
 
 def parse_ai_amount(value):
@@ -322,18 +328,30 @@ def bootstrap():
 @login_required
 def accounts_api():
     data = request.json or {}
-    name = str(data.get("name", "")).strip()
+    name = " ".join(str(data.get("name", "")).split())
     kind = data.get("kind", "bank")
     if not name or len(name) > 80:
         return jsonify(error="Nama akun wajib diisi (maks. 80 karakter)"), 400
     if kind not in ("cash", "bank", "ewallet", "other"):
         return jsonify(error="Jenis akun tidak valid"), 400
-    if any(a.get("name", "").casefold() == name.casefold() for a in list_records("accounts")):
-        return jsonify(error="Nama akun sudah digunakan"), 409
     try:
         initial = money(data.get("initial_balance", 0), allow_zero=True)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
+    matches = [a for a in list_records("accounts") if normalize_account_name(a.get("name", "")) == normalize_account_name(name)]
+    active_match = next((a for a in matches if a.get("active", True)), None)
+    archived_match = next((a for a in matches if not a.get("active", True)), None)
+    if active_match:
+        return jsonify(error=f'Akun "{active_match.get("name", name)}" sudah ada.'), 409
+    if archived_match:
+        firestore_client().collection("accounts").document(archived_match["id"]).update({
+            "name": name,
+            "kind": kind,
+            "initial_cents": initial,
+            "active": True,
+            "created_at": stamp_now(),
+        })
+        return jsonify(ok=True, reactivated=True)
     create_record("accounts", {"name": name, "kind": kind, "initial_cents": initial, "active": True, "created_at": stamp_now()})
     return jsonify(ok=True)
 
@@ -343,18 +361,19 @@ def accounts_api():
 def delete_account(account_id):
     data = request.json or {}
     destination_id = str(data.get("destination_id", ""))
-    if not destination_id or destination_id == account_id:
-        return jsonify(error="Pilih akun tujuan yang berbeda"), 400
     accounts, _, transactions, _ = active_accounts_and_transactions()
     account = next((item for item in accounts if item["id"] == account_id and item.get("active", True)), None)
-    destination = next((item for item in accounts if item["id"] == destination_id and item.get("active", True)), None)
     if not account:
         return jsonify(error="Akun tidak ditemukan"), 404
     if len([item for item in accounts if item.get("active", True)]) <= 1:
         return jsonify(error="Akun aktif terakhir tidak dapat dihapus"), 409
-    if not destination:
-        return jsonify(error="Akun tujuan tidak ditemukan"), 400
     current_balance = account_balance(account, transactions)
+    if current_balance:
+        if not destination_id or destination_id == account_id:
+            return jsonify(error="Pilih akun tujuan yang berbeda untuk mengalihkan saldo"), 400
+        destination = next((item for item in accounts if item["id"] == destination_id and item.get("active", True)), None)
+        if not destination:
+            return jsonify(error="Akun tujuan tidak ditemukan"), 400
     client = firestore_client()
     batch = client.batch()
     batch.update(client.collection("accounts").document(account_id), {"active": False})
