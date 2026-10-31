@@ -167,16 +167,9 @@ def active_accounts_and_transactions():
     return accounts, categories, transactions, wishes, budgets
 
 
-def behavior_summary(transactions, today):
-    current_month = date(today.year, today.month, 1)
-    months = []
-    for offset in range(11, -1, -1):
-        absolute_month = current_month.year * 12 + current_month.month - 1 - offset
-        year, month_index = divmod(absolute_month, 12)
-        months.append(date(year, month_index + 1, 1))
-    start_day = months[0]
-    daily_expenses = {}
-    hour_counts = [0] * 24
+def behavior_summary(transactions, today, selected_year):
+    parsed_transactions = []
+    available_years = {today.year}
     for tx in transactions:
         raw_timestamp = str(tx.get("occurred_at", ""))
         try:
@@ -186,14 +179,25 @@ def behavior_summary(transactions, today):
             tx_day = timestamp.date()
         except ValueError:
             continue
-        if not start_day <= tx_day <= today:
+        parsed_transactions.append((tx, timestamp, tx_day))
+        if tx_day.year <= today.year:
+            available_years.add(tx_day.year)
+
+    if selected_year not in available_years:
+        selected_year = today.year
+    start_day = date(selected_year, 1, 1)
+    end_day = min(today, date(selected_year, 12, 31))
+    daily_expenses = {}
+    hour_counts = [0] * 24
+    for tx, timestamp, tx_day in parsed_transactions:
+        if not start_day <= tx_day <= end_day:
             continue
         hour_counts[timestamp.hour] += 1
         if tx.get("kind") == "expense":
             daily_expenses[tx_day] = daily_expenses.get(tx_day, 0) + int(tx.get("amount_cents", 0) or 0)
 
     weekday_total = weekend_total = weekday_days = weekend_days = 0
-    total_days = (today - start_day).days + 1
+    total_days = (end_day - start_day).days + 1
     for offset in range(total_days):
         day = start_day + timedelta(days=offset)
         amount = daily_expenses.get(day, 0)
@@ -205,24 +209,23 @@ def behavior_summary(transactions, today):
             weekday_days += 1
 
     month_cells = []
-    for month_start in months:
+    for month_number in range(1, 13):
+        month_start = date(selected_year, month_number, 1)
         days = []
         for day_number in range(1, calendar.monthrange(month_start.year, month_start.month)[1] + 1):
             day = date(month_start.year, month_start.month, day_number)
             days.append({
                 "day": day_number,
                 "date": day.isoformat(),
-                "expense_cents": daily_expenses.get(day, 0) if day <= today else None,
+                "expense_cents": daily_expenses.get(day, 0) if day <= end_day else None,
             })
-        month_cells.append({
-            "key": month_start.strftime("%Y-%m"),
-            "label": month_start.strftime("%b %Y"),
-            "days": days,
-        })
+        month_cells.append({"key": month_start.strftime("%Y-%m"), "days": days})
 
     busiest_hour = max(range(24), key=hour_counts.__getitem__) if any(hour_counts) else None
     total_expense = sum(daily_expenses.values())
     return {
+        "year": selected_year,
+        "available_years": sorted(available_years, reverse=True),
         "months": month_cells,
         "hour_counts": hour_counts,
         "busiest_hour": busiest_hour,
@@ -302,7 +305,13 @@ def bootstrap():
     try:
         accounts, categories, transactions, wishes, budgets = active_accounts_and_transactions()
         today = now_local().date()
-        behavior = behavior_summary(transactions, today)
+        try:
+            behavior_year = int(request.args.get("behavior_year", today.year))
+        except ValueError:
+            return jsonify(error="Tahun Behaviour tidak valid"), 400
+        if behavior_year < 1 or behavior_year > today.year:
+            return jsonify(error="Tahun Behaviour tidak valid"), 400
+        behavior = behavior_summary(transactions, today, behavior_year)
         end = request.args.get("end", today.isoformat())
         start = request.args.get("start", today.replace(day=1).isoformat())
         try:

@@ -23,23 +23,27 @@
   };
   const renderHours=(counts,busiest)=>{
     const chart=document.querySelector('#hour-chart'),values=Array.from({length:24},(_,hour)=>Number(counts?.[hour])||0),max=Math.max(...values,1);
-    document.querySelector('#busiest-hour').textContent=busiest===null||busiest===undefined?'Belum ada transaksi dalam 12 bulan terakhir.':`Paling sering pada pukul ${String(busiest).padStart(2,'0')}.00 (${values[busiest]} transaksi)`;
+    document.querySelector('#busiest-hour').textContent=busiest===null||busiest===undefined?'Belum ada transaksi pada tahun terpilih.':`Paling sering pada pukul ${String(busiest).padStart(2,'0')}.00 (${values[busiest]} transaksi)`;
     chart.innerHTML=values.map((count,hour)=>`<div class="hour-bar-item ${hour===busiest?'peak':''}" title="${String(hour).padStart(2,'0')}.00 - ${count} transaksi"><div class="hour-bar-track"><i style="height:${count?Math.max(4,count/max*100):0}%"></i></div><small>${String(hour).padStart(2,'0')}</small></div>`).join('');
   };
-  const renderSpending=spending=>{
+  const renderSpending=(spending,year)=>{
     const comparison=document.querySelector('#spending-comparison'),weekday=Number(spending.weekday_average_cents)||0,weekend=Number(spending.weekend_average_cents)||0,max=Math.max(weekday,weekend,1);
     const items=[{name:'Weekday (Senin-Jumat)',average:weekday,total:spending.weekday_total_cents},{name:'Weekend (Sabtu-Minggu)',average:weekend,total:spending.weekend_total_cents}];
     comparison.innerHTML=items.map(item=>`<div class="spending-compare-item"><div class="spending-compare-label"><span>${item.name}</span><b>${money(item.average)} / hari</b></div><div class="spending-compare-track"><i style="width:${Math.max(0,item.average/max*100)}%"></i></div><small>Total ${money(item.total)} selama periode</small></div>`).join('');
     document.querySelector('#daily-spending-average').textContent=money(spending.daily_average_cents);
-    document.querySelector('#daily-spending-context').textContent=`Total ${money(spending.total_cents)} selama ${spending.period_days} hari.`;
+    document.querySelector('#daily-spending-context').textContent=`Total ${money(spending.total_cents)} selama ${spending.period_days} hari pada ${year}.`;
   };
   const render=()=>{
     const summary=state.behavior;
     if(!summary)return;
+    const yearSelect=document.querySelector('#behaviour-year'),years=summary.available_years||[summary.year];
+    yearSelect.innerHTML=years.map(year=>`<option value="${year}">${year}</option>`).join('');
+    yearSelect.value=String(summary.year);
     renderCalendar(summary.months||[]);
     renderHours(summary.hour_counts||[],summary.busiest_hour);
-    renderSpending(summary.spending||{});
+    renderSpending(summary.spending||{},summary.year);
   };
   window.addEventListener('dashboard:loaded',render);
+  document.querySelector('#behaviour-year').onchange=()=>load();
   if(state.behavior)render();
 })();
