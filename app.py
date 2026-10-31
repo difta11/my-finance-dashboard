@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -97,21 +98,35 @@ def parse_ai_amount(value):
     return amount if 0 < amount <= 10**13 else None
 
 
-def ensure_defaults():
-    accounts = list_records("accounts")
-    categories = list_records("categories")
+def ensure_defaults(accounts, categories):
     account_names = {item["name"].casefold() for item in accounts}
     category_keys = {(item["name"].casefold(), item["kind"]) for item in categories}
     timestamp = stamp_now()
+    pending = []
     for name, kind in [("Cash", "cash"), ("Bank Jago", "bank"), ("Mandiri", "bank"), ("GoPay", "ewallet")]:
         if name.casefold() not in account_names:
-            create_record("accounts", {"name": name, "kind": kind, "initial_cents": 0, "active": True, "created_at": timestamp})
+            record = {"name": name, "kind": kind, "initial_cents": 0, "active": True, "created_at": timestamp}
+            pending.append(("accounts", record, accounts))
+            account_names.add(name.casefold())
     for name in EXPENSES:
         if (name.casefold(), "expense") not in category_keys:
-            create_record("categories", {"name": name, "kind": "expense", "color": "#8794ff", "active": True})
+            record = {"name": name, "kind": "expense", "color": "#8794ff", "active": True}
+            pending.append(("categories", record, categories))
+            category_keys.add((name.casefold(), "expense"))
     for name in INCOMES:
         if (name.casefold(), "income") not in category_keys:
-            create_record("categories", {"name": name, "kind": "income", "color": "#8794ff", "active": True})
+            record = {"name": name, "kind": "income", "color": "#8794ff", "active": True}
+            pending.append(("categories", record, categories))
+            category_keys.add((name.casefold(), "income"))
+    if pending:
+        client = firestore_client()
+        batch = client.batch()
+        for collection, record, destination in pending:
+            ref = client.collection(collection).document()
+            batch.set(ref, record)
+            destination.append(record | {"id": ref.id})
+        batch.commit()
+    return accounts, categories
 
 
 def account_balance(account, transactions, before=None):
@@ -138,11 +153,15 @@ def account_balance(account, transactions, before=None):
 
 
 def active_accounts_and_transactions():
-    ensure_defaults()
-    accounts = list_records("accounts")
-    categories = list_records("categories")
-    transactions = list_records("transactions")
-    wishes = list_records("wishes")
+    # Initialize the cached Admin clients before starting parallel reads.
+    firestore_client()
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {collection: pool.submit(list_records, collection) for collection in ("accounts", "categories", "transactions", "wishes")}
+        accounts = futures["accounts"].result()
+        categories = futures["categories"].result()
+        transactions = futures["transactions"].result()
+        wishes = futures["wishes"].result()
+    accounts, categories = ensure_defaults(accounts, categories)
     return accounts, categories, transactions, wishes
 
 
