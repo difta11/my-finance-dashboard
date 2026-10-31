@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "Category": {
+      "enum": [
+        "makan_minum",
+        "belanja_harian",
+        "transport",
+        "tagihan",
+        "tempat_tinggal",
+        "kesehatan",
+        "hiburan",
+        "belanja",
+        "pendidikan",
+        "donasi",
+        "cicilan",
+        "lainnya",
+        "gaji",
+        "pemasukan_lain",
+        "transfer_internal"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "DateSource": {
+      "enum": [
+        "struk",
+        "eksplisit",
+        "relatif",
+        "tidak_ada"
+      ],
+      "title": "DateSource",
+      "type": "string"
+    },
+    "Entry": {
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/EntryType"
+        },
+        "amount_idr": {
+          "description": "Nominal total dalam rupiah bulat, tanpa pemisah. Selalu positif.",
+          "title": "Amount Idr",
+          "type": "integer"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "occurred_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Waktu transaksi, ISO 8601 dengan offset, contoh 2026-10-12T13:05:00+07:00. null jika tidak ada petunjuk waktu sama sekali.",
+          "title": "Occurred At"
+        },
+        "date_source": {
+          "$ref": "#/$defs/DateSource"
+        },
+        "merchant": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Nama toko/penerima jika ada. Selain itu null.",
+          "title": "Merchant"
+        },
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Akun sumber dana jika disebut: tunai, BCA, Mandiri, BRI, BNI, GoPay, OVO, DANA, ShopeePay, kartu_kredit. Selain itu null.",
+          "title": "Account"
+        },
+        "note": {
+          "description": "Ringkasan singkat maksimal 60 karakter, bahasa Indonesia.",
+          "title": "Note",
+          "type": "string"
+        },
+        "items": {
+          "description": "Rincian item struk jika terbaca jelas. Selain itu daftar kosong.",
+          "items": {
+            "$ref": "#/$defs/LineItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "confidence": {
+          "description": "Keyakinan 0.0 sampai 1.0 (lihat aturan keyakinan).",
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "amount_idr",
+        "category",
+        "occurred_at",
+        "date_source",
+        "merchant",
+        "account",
+        "note",
+        "items",
+        "confidence"
+      ],
+      "title": "Entry",
+      "type": "object"
+    },
+    "EntryType": {
+      "enum": [
+        "expense",
+        "income",
+        "transfer"
+      ],
+      "title": "EntryType",
+      "type": "string"
+    },
+    "LineItem": {
+      "properties": {
+        "name": {
+          "description": "Nama item persis seperti di struk.",
+          "title": "Name",
+          "type": "string"
+        },
+        "amount_idr": {
+          "description": "Harga total baris ini (qty x harga) dalam rupiah bulat.",
+          "title": "Amount Idr",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "amount_idr"
+      ],
+      "title": "LineItem",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "entries": {
+      "description": "Satu entri per transaksi. Kosong jika input bukan transaksi.",
+      "items": {
+        "$ref": "#/$defs/Entry"
+      },
+      "title": "Entries",
+      "type": "array"
+    },
+    "clarification": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Satu pertanyaan singkat bahasa Indonesia jika informasi krusial hilang (mis. nominal tidak disebut). Selain itu null.",
+      "title": "Clarification"
+    }
+  },
+  "required": [
+    "entries",
+    "clarification"
+  ],
+  "title": "ParseResult",
+  "type": "object"
+}
