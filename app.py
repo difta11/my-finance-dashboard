@@ -267,7 +267,6 @@ def bootstrap():
                 continue
             budget_category_id = str(budget.get("category_id", ""))
             category = category_by_id.get(budget_category_id, {})
-            account = account_by_id.get(str(budget.get("account_id", "")), {})
             created_at = str(budget.get("created_at", ""))
             spent = sum(
                 int(tx.get("amount_cents", 0) or 0)
@@ -278,9 +277,9 @@ def bootstrap():
             )
             allocated = int(budget.get("allocated_cents", 0) or 0)
             remaining = max(0, allocated - spent)
-            active_budgets.append(budget | {
+            budget_view = {key: value for key, value in budget.items() if key != "account_id"}
+            active_budgets.append(budget_view | {
                 "category": category.get("name", "Kategori diarsipkan"),
-                "account": account.get("name", "Akun diarsipkan"),
                 "spent_cents": spent,
                 "remaining_cents": remaining,
                 "remaining_percent": round(remaining / allocated * 100) if allocated else 0,
@@ -408,12 +407,10 @@ def accounts_api():
 def delete_account(account_id):
     data = request.json or {}
     destination_id = str(data.get("destination_id", ""))
-    accounts, _, transactions, _, budgets = active_accounts_and_transactions()
+    accounts, _, transactions, _, _ = active_accounts_and_transactions()
     account = next((item for item in accounts if item["id"] == account_id and item.get("active", True)), None)
     if not account:
         return jsonify(error="Akun tidak ditemukan"), 404
-    if any(budget.get("active", True) and str(budget.get("account_id")) == account_id for budget in budgets):
-        return jsonify(error="Akun ini menjadi sumber budget. Hapus budget terkait sebelum menghapus akun."), 409
     if len([item for item in accounts if item.get("active", True)]) <= 1:
         return jsonify(error="Akun aktif terakhir tidak dapat dihapus"), 409
     current_balance = account_balance(account, transactions)
@@ -508,7 +505,6 @@ def delete_wish(wish_id):
 def create_budget():
     data = request.json or {}
     name = " ".join(str(data.get("name", "")).split())
-    account_id = str(data.get("account_id", ""))
     category_id = str(data.get("category_id", ""))
     if not name or len(name) > 80:
         return jsonify(error="Nama budget wajib diisi (maks. 80 karakter)"), 400
@@ -516,9 +512,6 @@ def create_budget():
         allocated = money(data.get("amount"))
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
-    account = get_record("accounts", account_id)
-    if not account or not account.get("active", True):
-        return jsonify(error="Pilih akun sumber yang aktif"), 400
     category = get_record("categories", category_id)
     if not category or not category.get("active", True) or category.get("kind") != "expense":
         return jsonify(error="Pilih kategori pengeluaran yang aktif"), 400
@@ -527,7 +520,6 @@ def create_budget():
         return jsonify(error="Kategori ini sudah terhubung ke budget lain"), 409
     create_record("budgets", {
         "name": name,
-        "account_id": account_id,
         "category_id": category_id,
         "allocated_cents": allocated,
         "active": True,
