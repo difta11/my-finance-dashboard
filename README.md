@@ -22,7 +22,8 @@ Panduan Firebase dan Vercel: [SETUP.md](SETUP.md) · [DEPLOYMENT.md](DEPLOYMENT.
 
 ## Fitur
 
-- Dashboard, transaksi, akun, kategori kustom, Budgetting, dan Wish.
+- Dashboard, transaksi, akun, kategori kustom, Budgetting, Wish, dan Behaviour.
+- Pola pengeluaran harian, jam transaksi tersibuk, perbandingan weekday/weekend, dan rata-rata pengeluaran harian.
 - Budget per kategori pengeluaran dengan nominal terpakai, sisa dana, dan persentase otomatis.
 - Koleksi Firestore `budgets` dibuat otomatis saat budget pertama disimpan; tidak perlu dibuat manual.
 - Saldo, transfer antar-akun, filter rentang waktu, grafik aset/pengeluaran, dan CSV.
