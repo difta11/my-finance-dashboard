@@ -1,0 +1,28 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*service-account*.json
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+*serviceAccount*.json
+*.pem
+*.key
+
+# Local databases, uploads, and generated files
+data/
+*.sqlite
+*.sqlite3
+*.db
+receipts/
+receipt-staging/
+tests/struk.jpg
+
+# Python and Vercel tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vercel/
+.python-version.local

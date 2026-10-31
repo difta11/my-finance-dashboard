@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masuk · My Finance Dashboard</title>
+  <link rel="icon" href="/static/brand-logo.png" type="image/png">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="login-bg">
+  <form id="login" class="login-card">
+    <span class="brand-icon login-brand-icon"><img class="brand-logo" src="/static/brand-logo.png" alt=""></span>
+    <p class="eyebrow">KEUANGAN PRIBADI</p>
+    <h1>My Finance Dashboard</h1>
+    <p class="muted">Masuk ke dashboard keuangan privat Anda.</p>
+    <label>Kata sandi<input name="password" type="password" autocomplete="current-password" required autofocus></label>
+    <button class="primary" type="submit">Masuk ke dashboard <span aria-hidden="true">&rarr;</span></button>
+    <p id="error" class="error" role="alert" aria-live="polite"></p>
+  </form>
+  <script>
+    const loginForm = document.querySelector('#login');
+    const loginError = document.querySelector('#error');
+    const loginButton = loginForm.querySelector('button[type="submit"]');
+    const loginButtonText = loginButton.innerHTML;
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      loginError.textContent = '';
+      loginButton.disabled = true;
+      loginButton.textContent = 'Memeriksa...';
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: loginForm.elements.password.value })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Login gagal (HTTP ${response.status}).`);
+        if (!result.csrf) throw new Error('Server tidak memberikan token sesi. Periksa log aplikasi.');
+
+        sessionStorage.setItem('csrf', result.csrf);
+        const sessionResponse = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
+        const sessionState = await sessionResponse.json().catch(() => ({}));
+        if (!sessionResponse.ok || !sessionState.authenticated) {
+          throw new Error('Kata sandi diterima, tetapi sesi login tidak tersimpan. Pastikan SESSION_SECRET tetap sama dan server hanya berjalan satu kali.');
+        }
+        location.replace('/');
+      } catch (error) {
+        loginError.textContent = error.message || 'Login gagal. Pastikan server lokal berjalan lalu coba lagi.';
+      } finally {
+        loginButton.disabled = false;
+        loginButton.innerHTML = loginButtonText;
+      }
+    });
+  </script>
+</body>
+</html>
