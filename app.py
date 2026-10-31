@@ -155,14 +155,15 @@ def account_balance(account, transactions, before=None):
 def active_accounts_and_transactions():
     # Initialize the cached Admin clients before starting parallel reads.
     firestore_client()
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        futures = {collection: pool.submit(list_records, collection) for collection in ("accounts", "categories", "transactions", "wishes")}
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = {collection: pool.submit(list_records, collection) for collection in ("accounts", "categories", "transactions", "wishes", "budgets")}
         accounts = futures["accounts"].result()
         categories = futures["categories"].result()
         transactions = futures["transactions"].result()
         wishes = futures["wishes"].result()
+        budgets = futures["budgets"].result()
     accounts, categories = ensure_defaults(accounts, categories)
-    return accounts, categories, transactions, wishes
+    return accounts, categories, transactions, wishes, budgets
 
 
 def login_required(fn):
@@ -227,7 +228,7 @@ def home():
 @login_required
 def bootstrap():
     try:
-        accounts, categories, transactions, wishes = active_accounts_and_transactions()
+        accounts, categories, transactions, wishes, budgets = active_accounts_and_transactions()
         today = now_local().date()
         end = request.args.get("end", today.isoformat())
         start = request.args.get("start", today.replace(day=1).isoformat())
@@ -259,6 +260,33 @@ def bootstrap():
                 key = str(tx["category_id"])
                 tx_counts[key] = tx_counts.get(key, 0) + 1
         cats = [c | {"transaction_count": tx_counts.get(str(c["id"]), 0)} for c in active_categories]
+
+        active_budgets = []
+        for budget in budgets:
+            if not budget.get("active", True):
+                continue
+            budget_category_id = str(budget.get("category_id", ""))
+            category = category_by_id.get(budget_category_id, {})
+            account = account_by_id.get(str(budget.get("account_id", "")), {})
+            created_at = str(budget.get("created_at", ""))
+            spent = sum(
+                int(tx.get("amount_cents", 0) or 0)
+                for tx in transactions
+                if tx.get("kind") == "expense"
+                and str(tx.get("category_id", "")) == budget_category_id
+                and str(tx.get("created_at") or tx.get("occurred_at") or "") >= created_at
+            )
+            allocated = int(budget.get("allocated_cents", 0) or 0)
+            remaining = max(0, allocated - spent)
+            active_budgets.append(budget | {
+                "category": category.get("name", "Kategori diarsipkan"),
+                "account": account.get("name", "Akun diarsipkan"),
+                "spent_cents": spent,
+                "remaining_cents": remaining,
+                "remaining_percent": round(remaining / allocated * 100) if allocated else 0,
+                "overspent_cents": max(0, spent - allocated),
+            })
+        active_budgets.sort(key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))), reverse=True)
 
         in_range = [tx for tx in transactions if start <= str(tx.get("occurred_at", ""))[:10] <= end]
         in_range.sort(key=lambda tx: (str(tx.get("occurred_at", "")), str(tx.get("id", ""))), reverse=True)
@@ -338,7 +366,7 @@ def bootstrap():
         current_assets = sum(a["balance_cents"] for a in accts)
         wish_stats = {"period_days": wish_days, "current_assets_cents": current_assets, "income_90d_cents": wish_income, "expense_90d_cents": wish_expense, "asset_change_90d_cents": current_assets - assets_before}
         wishes.sort(key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))), reverse=True)
-        return jsonify(accounts=accts, categories=cats, wishes=wishes, wish_stats=wish_stats, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat})
+        return jsonify(accounts=accts, categories=cats, budgets=active_budgets, wishes=wishes, wish_stats=wish_stats, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat})
     except RuntimeError as exc:
         return jsonify(error=str(exc)), 503
 
@@ -380,10 +408,12 @@ def accounts_api():
 def delete_account(account_id):
     data = request.json or {}
     destination_id = str(data.get("destination_id", ""))
-    accounts, _, transactions, _ = active_accounts_and_transactions()
+    accounts, _, transactions, _, budgets = active_accounts_and_transactions()
     account = next((item for item in accounts if item["id"] == account_id and item.get("active", True)), None)
     if not account:
         return jsonify(error="Akun tidak ditemukan"), 404
+    if any(budget.get("active", True) and str(budget.get("account_id")) == account_id for budget in budgets):
+        return jsonify(error="Akun ini menjadi sumber budget. Hapus budget terkait sebelum menghapus akun."), 409
     if len([item for item in accounts if item.get("active", True)]) <= 1:
         return jsonify(error="Akun aktif terakhir tidak dapat dihapus"), 409
     current_balance = account_balance(account, transactions)
@@ -443,6 +473,8 @@ def delete_category(category_id):
         return jsonify(error="Kategori tidak ditemukan"), 404
     if any(str(tx.get("category_id")) == category_id for tx in list_records("transactions")):
         return jsonify(error="Kategori yang masih dipakai transaksi tidak dapat dihapus"), 409
+    if any(budget.get("active", True) and str(budget.get("category_id")) == category_id for budget in list_records("budgets")):
+        return jsonify(error="Kategori yang masih dipakai budget tidak dapat dihapus"), 409
     delete_record("categories", category_id)
     return jsonify(ok=True)
 
@@ -468,6 +500,49 @@ def delete_wish(wish_id):
     if not get_record("wishes", wish_id):
         return jsonify(error="Impian tidak ditemukan"), 404
     delete_record("wishes", wish_id)
+    return jsonify(ok=True)
+
+
+@app.post("/api/budgets")
+@login_required
+def create_budget():
+    data = request.json or {}
+    name = " ".join(str(data.get("name", "")).split())
+    account_id = str(data.get("account_id", ""))
+    category_id = str(data.get("category_id", ""))
+    if not name or len(name) > 80:
+        return jsonify(error="Nama budget wajib diisi (maks. 80 karakter)"), 400
+    try:
+        allocated = money(data.get("amount"))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    account = get_record("accounts", account_id)
+    if not account or not account.get("active", True):
+        return jsonify(error="Pilih akun sumber yang aktif"), 400
+    category = get_record("categories", category_id)
+    if not category or not category.get("active", True) or category.get("kind") != "expense":
+        return jsonify(error="Pilih kategori pengeluaran yang aktif"), 400
+    budgets = list_records("budgets")
+    if any(item.get("active", True) and str(item.get("category_id")) == category_id for item in budgets):
+        return jsonify(error="Kategori ini sudah terhubung ke budget lain"), 409
+    create_record("budgets", {
+        "name": name,
+        "account_id": account_id,
+        "category_id": category_id,
+        "allocated_cents": allocated,
+        "active": True,
+        "created_at": stamp_now(),
+    })
+    return jsonify(ok=True)
+
+
+@app.delete("/api/budgets/<budget_id>")
+@login_required
+def delete_budget(budget_id):
+    budget = get_record("budgets", budget_id)
+    if not budget or not budget.get("active", True):
+        return jsonify(error="Budget tidak ditemukan"), 404
+    delete_record("budgets", budget_id)
     return jsonify(ok=True)
 
 
@@ -582,7 +657,7 @@ def get_receipt(filename):
 @app.get("/api/export.csv")
 @login_required
 def export_csv():
-    _, categories, transactions, _ = active_accounts_and_transactions()
+    _, categories, transactions, _, _ = active_accounts_and_transactions()
     accounts = list_records("accounts")
     category_by_id = {str(item["id"]): item.get("name") for item in categories}
     account_by_id = {str(item["id"]): item.get("name") for item in accounts}
@@ -614,10 +689,13 @@ def parse_ai():
     image_extension = None
     categories = [item for item in list_records("categories") if item.get("active", True)]
     accounts = [item for item in list_records("accounts") if item.get("active", True)]
+    budgets = list_records("budgets")
     category_guide = "\nKategori aktif (gunakan nama dan jenis persis dari daftar ini): " + json.dumps([{"name": item["name"], "kind": item["kind"]} for item in categories], ensure_ascii=False)
+    category_by_id = {str(item["id"]): item for item in categories}
+    budget_guide = "\nBudget aktif dan kategori penghubungnya (bila deskripsi jelas merujuk budget, pilih kategori penghubungnya): " + json.dumps([{"name": item.get("name", ""), "category": category_by_id.get(str(item.get("category_id", "")), {}).get("name", "")} for item in budgets if item.get("active", True)], ensure_ascii=False)
     account_names = [item["name"] for item in accounts]
     account_guide = "\nAkun aktif yang tersedia: " + json.dumps(account_names, ensure_ascii=False)
-    user_text = "Ekstrak satu transaksi ke JSON untuk draft; jangan mengarang. Field: type (income|expense|transfer), amount (nominal rupiah integer, gunakan 0 jika tidak diketahui), category (nama kategori tersedia atau Transfer), account (nama akun aktif yang membayar/menerima, atau string kosong), destination_account (akun tujuan transfer, atau string kosong), description, payment_method (metode seperti QRIS, tunai, debit; string kosong jika tidak disebut), occurred_at (ISO atau string kosong bila tanggal tidak disebut), confidence (0-1), question (string kosong atau pertanyaan klarifikasi). Bedakan nama metode pembayaran dari nama akun. Jika input menyebut 'QRIS Mandiri', isi payment_method='QRIS' dan account='Mandiri' bila Mandiri ada di daftar akun. Pilih kategori custom paling cocok secara makna dari daftar, jangan membuat kategori baru. Jangan menebak akun atau metode yang tidak disebut." + category_guide + account_guide + ("\nInput: " + text if text else "\nBaca struk berikut.")
+    user_text = "Ekstrak satu transaksi ke JSON untuk draft; jangan mengarang. Field: type (income|expense|transfer), amount (nominal rupiah integer, gunakan 0 jika tidak diketahui), category (nama kategori tersedia atau Transfer), account (nama akun aktif yang membayar/menerima, atau string kosong), destination_account (akun tujuan transfer, atau string kosong), description, payment_method (metode seperti QRIS, tunai, debit; string kosong jika tidak disebut), occurred_at (ISO atau string kosong bila tanggal tidak disebut), confidence (0-1), question (string kosong atau pertanyaan klarifikasi). Bedakan nama metode pembayaran dari nama akun. Jika input menyebut 'QRIS Mandiri', isi payment_method='QRIS' dan account='Mandiri' bila Mandiri ada di daftar akun. Pilih kategori custom paling cocok secara makna dari daftar, jangan membuat kategori baru. Jangan menebak akun atau metode yang tidak disebut." + category_guide + budget_guide + account_guide + ("\nInput: " + text if text else "\nBaca struk berikut.")
     if image and image.filename:
         if image.mimetype not in ("image/jpeg", "image/png", "image/webp"):
             return jsonify(error=f"Gambar harus JPG, PNG, WebP dan maksimal {app.config['MAX_UPLOAD_MB']} MB"), 400
