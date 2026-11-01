@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
+from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
 import requests
@@ -58,6 +59,154 @@ def now_local() -> datetime:
 
 def stamp_now() -> str:
     return now_local().isoformat(timespec="seconds")
+
+
+GOOGLE_DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file"
+GOOGLE_DRIVE_INTEGRATION_ID = "google_drive"
+
+
+def google_drive_configured() -> bool:
+    configured = all(os.getenv(name, "").strip() for name in (
+        "GOOGLE_DRIVE_CLIENT_ID",
+        "GOOGLE_DRIVE_CLIENT_SECRET",
+        "GOOGLE_DRIVE_REDIRECT_URI",
+        "GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY",
+    ))
+    if not configured:
+        return False
+    try:
+        google_drive_cipher()
+        return True
+    except RuntimeError:
+        return False
+
+
+def google_drive_cipher():
+    from cryptography.fernet import Fernet
+
+    key = os.getenv("GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY", "").strip().encode()
+    if not key:
+        raise RuntimeError("Atur GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY sebelum menghubungkan Google Drive.")
+    try:
+        return Fernet(key)
+    except Exception as exc:
+        raise RuntimeError("GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY tidak valid. Gunakan kunci Fernet yang dibuat dengan cryptography.") from exc
+
+
+def google_drive_connection() -> dict | None:
+    return get_record("integrations", GOOGLE_DRIVE_INTEGRATION_ID)
+
+
+def google_drive_access_token() -> str:
+    if not google_drive_configured():
+        raise RuntimeError("Google Drive belum dikonfigurasi. Isi credential Google Drive di environment lalu muat ulang aplikasi.")
+    connection = google_drive_connection()
+    if not connection or not connection.get("refresh_token_encrypted"):
+        raise RuntimeError("Hubungkan Google Drive terlebih dahulu melalui fitur Tanya AI.")
+    try:
+        refresh_token = google_drive_cipher().decrypt(connection["refresh_token_encrypted"].encode()).decode()
+    except Exception as exc:
+        raise RuntimeError("Token Google Drive tidak dapat dibuka. Hubungkan ulang Google Drive.") from exc
+    try:
+        response = requests.post("https://oauth2.googleapis.com/token", data={
+            "client_id": os.getenv("GOOGLE_DRIVE_CLIENT_ID", "").strip(),
+            "client_secret": os.getenv("GOOGLE_DRIVE_CLIENT_SECRET", "").strip(),
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }, timeout=20)
+    except requests.RequestException as exc:
+        raise RuntimeError("Tidak dapat terhubung ke Google Drive. Coba lagi sebentar.") from exc
+    if not response.ok:
+        app.logger.warning("Google Drive token refresh failed with HTTP %s", response.status_code)
+        raise RuntimeError("Sesi Google Drive kedaluwarsa atau dicabut. Hubungkan ulang Google Drive.")
+    token = response.json().get("access_token")
+    if not token:
+        raise RuntimeError("Google Drive tidak mengembalikan access token. Hubungkan ulang Google Drive.")
+    return token
+
+
+def google_drive_error(response, operation: str):
+    try:
+        detail = response.json().get("error", {}).get("message", "")
+    except (ValueError, AttributeError):
+        detail = ""
+    app.logger.warning("Google Drive %s failed with HTTP %s: %s", operation, response.status_code, str(detail)[:250])
+    raise RuntimeError("Google Drive gagal memproses foto struk. Periksa koneksi Drive lalu coba lagi.")
+
+
+def google_drive_receipts_folder(access_token: str) -> str:
+    connection = google_drive_connection() or {}
+    folder_id = connection.get("receipts_folder_id")
+    if folder_id:
+        return str(folder_id)
+    try:
+        response = requests.post(
+            "https://www.googleapis.com/drive/v3/files",
+            headers={"Authorization": "Bearer " + access_token},
+            params={"fields": "id"},
+            json={"name": "My Finance Dashboard", "mimeType": "application/vnd.google-apps.folder"},
+            timeout=20,
+        )
+    except requests.RequestException as exc:
+        raise RuntimeError("Tidak dapat membuat folder struk di Google Drive.") from exc
+    if not response.ok:
+        google_drive_error(response, "folder creation")
+    folder_id = response.json().get("id")
+    if not folder_id:
+        raise RuntimeError("Google Drive tidak mengembalikan folder struk.")
+    firestore_client().collection("integrations").document(GOOGLE_DRIVE_INTEGRATION_ID).update({"receipts_folder_id": folder_id})
+    return folder_id
+
+
+def upload_google_drive_receipt(filename: str, mime_type: str, image_data: bytes) -> dict:
+    access_token = google_drive_access_token()
+    folder_id = google_drive_receipts_folder(access_token)
+    boundary = "finance-dashboard-" + secrets.token_hex(16)
+    metadata = json.dumps({"name": filename, "mimeType": mime_type, "parents": [folder_id]}, ensure_ascii=False).encode("utf-8")
+    marker = boundary.encode("ascii")
+    body = (
+        b"--" + marker + b"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + metadata + b"\r\n"
+        + b"--" + marker + b"\r\nContent-Type: " + mime_type.encode("ascii") + b"\r\n\r\n" + image_data + b"\r\n"
+        + b"--" + marker + b"--"
+    )
+    try:
+        response = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files",
+            headers={
+                "Authorization": "Bearer " + access_token,
+                "Content-Type": "multipart/related; boundary=" + boundary,
+            },
+            params={"uploadType": "multipart", "fields": "id,name,webViewLink,mimeType"},
+            data=body,
+            timeout=40,
+        )
+    except requests.RequestException as exc:
+        raise RuntimeError("Tidak dapat mengunggah foto ke Google Drive. Coba lagi sebentar.") from exc
+    if not response.ok:
+        google_drive_error(response, "receipt upload")
+    uploaded = response.json()
+    file_id = uploaded.get("id")
+    if not file_id:
+        raise RuntimeError("Google Drive tidak mengembalikan identitas file struk.")
+    return {
+        "id": file_id,
+        "name": uploaded.get("name") or filename,
+        "url": uploaded.get("webViewLink") or f"https://drive.google.com/open?id={quote(file_id)}",
+    }
+
+
+def delete_google_drive_file(file_id: str) -> None:
+    access_token = google_drive_access_token()
+    try:
+        response = requests.delete(
+            "https://www.googleapis.com/drive/v3/files/" + quote(file_id, safe=""),
+            headers={"Authorization": "Bearer " + access_token},
+            timeout=20,
+        )
+    except requests.RequestException as exc:
+        raise RuntimeError("Tidak dapat menghapus foto dari Google Drive.") from exc
+    if response.status_code not in (200, 204, 404):
+        google_drive_error(response, "receipt deletion")
 
 
 def money(value, allow_zero=False):
@@ -297,6 +446,89 @@ def logout():
 def home():
     html = render_template("index.html")
     return html.replace("<body>", f'<body data-max-upload-mb="{app.config["MAX_UPLOAD_MB"]}">', 1)
+
+
+@app.get("/auth/google-drive/connect")
+@login_required
+def connect_google_drive():
+    if not google_drive_configured():
+        return redirect(url_for("home", drive="not_configured"))
+    state = secrets.token_urlsafe(32)
+    session["google_drive_oauth_state"] = state
+    params = {
+        "client_id": os.getenv("GOOGLE_DRIVE_CLIENT_ID", "").strip(),
+        "redirect_uri": os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "").strip(),
+        "response_type": "code",
+        "scope": GOOGLE_DRIVE_SCOPE,
+        "access_type": "offline",
+        "include_granted_scopes": "true",
+        "prompt": "consent select_account",
+        "state": state,
+    }
+    return redirect("https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params))
+
+
+@app.get("/auth/google-drive/callback")
+@login_required
+def google_drive_callback():
+    expected_state = session.pop("google_drive_oauth_state", "")
+    received_state = request.args.get("state", "")
+    if not expected_state or not secrets.compare_digest(expected_state, received_state):
+        return redirect(url_for("home", drive="state_error"))
+    if request.args.get("error"):
+        return redirect(url_for("home", drive="denied"))
+    code = request.args.get("code", "")
+    if not code or not google_drive_configured():
+        return redirect(url_for("home", drive="not_configured"))
+    try:
+        response = requests.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": os.getenv("GOOGLE_DRIVE_CLIENT_ID", "").strip(),
+            "client_secret": os.getenv("GOOGLE_DRIVE_CLIENT_SECRET", "").strip(),
+            "redirect_uri": os.getenv("GOOGLE_DRIVE_REDIRECT_URI", "").strip(),
+            "grant_type": "authorization_code",
+        }, timeout=20)
+    except requests.RequestException:
+        app.logger.warning("Google Drive OAuth code exchange could not reach Google")
+        return redirect(url_for("home", drive="connection_error"))
+    if not response.ok:
+        app.logger.warning("Google Drive OAuth code exchange failed with HTTP %s", response.status_code)
+        return redirect(url_for("home", drive="connection_error"))
+    tokens = response.json()
+    refresh_token = tokens.get("refresh_token")
+    if not refresh_token:
+        existing = google_drive_connection() or {}
+        if existing.get("refresh_token_encrypted"):
+            return redirect(url_for("home", drive="connected"))
+        return redirect(url_for("home", drive="token_missing"))
+    encrypted = google_drive_cipher().encrypt(refresh_token.encode()).decode()
+    firestore_client().collection("integrations").document(GOOGLE_DRIVE_INTEGRATION_ID).set({
+        "refresh_token_encrypted": encrypted,
+        "receipts_folder_id": (google_drive_connection() or {}).get("receipts_folder_id"),
+        "updated_at": stamp_now(),
+    })
+    return redirect(url_for("home", drive="connected"))
+
+
+@app.get("/api/google-drive/status")
+@login_required
+def google_drive_status():
+    connection = google_drive_connection() or {}
+    return jsonify(configured=google_drive_configured(), connected=bool(connection.get("refresh_token_encrypted")))
+
+
+@app.post("/api/google-drive/disconnect")
+@login_required
+def disconnect_google_drive():
+    connection = google_drive_connection()
+    if connection and connection.get("refresh_token_encrypted"):
+        try:
+            refresh_token = google_drive_cipher().decrypt(connection["refresh_token_encrypted"].encode()).decode()
+            requests.post("https://oauth2.googleapis.com/revoke", params={"token": refresh_token}, timeout=10)
+        except Exception:
+            app.logger.warning("Could not revoke the Google Drive refresh token during disconnect", exc_info=True)
+    delete_record("integrations", GOOGLE_DRIVE_INTEGRATION_ID)
+    return jsonify(ok=True)
 
 
 @app.get("/api/bootstrap")
@@ -629,11 +861,22 @@ def delete_budget(budget_id):
 @app.route("/api/transactions", methods=["POST"])
 @login_required
 def create_transaction():
-    data = request.json or {}
+    data = request.form if request.mimetype == "multipart/form-data" else (request.json or {})
     kind = data.get("kind")
     account_id = str(data.get("account_id", ""))
     destination_id = str(data.get("destination_id", ""))
     receipt_file = str(data.get("receipt_file", "")).strip()
+    receipt_upload = request.files.get("receipt") if request.files else None
+    receipt_bytes = None
+    receipt_name = None
+    if receipt_upload and receipt_upload.filename:
+        if receipt_upload.mimetype not in ("image/jpeg", "image/png", "image/webp"):
+            return jsonify(error=f"Gambar harus JPG, PNG, WebP dan maksimal {app.config['MAX_UPLOAD_MB']} MB"), 400
+        receipt_bytes = receipt_upload.read()
+        if len(receipt_bytes) > app.config["MAX_UPLOAD_BYTES"]:
+            return jsonify(error=f"Gambar harus JPG, PNG, WebP dan maksimal {app.config['MAX_UPLOAD_MB']} MB"), 400
+        receipt_name = os.path.basename(receipt_upload.filename.replace("\\", "/"))
+        receipt_name = "".join(char for char in receipt_name if char.isprintable()).strip()[:120] or "struk"
     if receipt_file and not re.fullmatch(r"[0-9a-f]{32}\.(jpg|png|webp)", receipt_file):
         return jsonify(error="Foto struk tidak ditemukan. Unggah ulang struk sebelum menyimpan."), 400
     if kind not in ("income", "expense", "transfer"):
@@ -658,6 +901,7 @@ def create_transaction():
             return jsonify(error="Kategori tidak valid"), 400
     draft_blob = None
     saved_blob = None
+    drive_receipt = None
     if receipt_file:
         bucket = storage_bucket()
         draft_blob = bucket.blob("draft-receipts/" + receipt_file)
@@ -666,13 +910,23 @@ def create_transaction():
         saved_blob = bucket.blob("receipts/" + receipt_file)
         bucket.copy_blob(draft_blob, bucket, new_name=saved_blob.name)
         draft_blob.delete()
+    if receipt_bytes is not None:
+        try:
+            drive_receipt = upload_google_drive_receipt(receipt_name, receipt_upload.mimetype, receipt_bytes)
+        except RuntimeError as exc:
+            return jsonify(error=str(exc)), 503
     occurred_at = str(data.get("occurred_at") or stamp_now())
-    record = {"kind": kind, "amount_cents": cents, "category_id": category_id, "account_id": account_id, "destination_id": destination_id if kind == "transfer" else None, "description": str(data.get("description", ""))[:300], "payment_method": str(data.get("payment_method", ""))[:50], "original_input": str(data.get("original_input", ""))[:1000], "occurred_at": occurred_at, "created_at": stamp_now(), "receipt_file": receipt_file or None}
+    record = {"kind": kind, "amount_cents": cents, "category_id": category_id, "account_id": account_id, "destination_id": destination_id if kind == "transfer" else None, "description": str(data.get("description", ""))[:300], "payment_method": str(data.get("payment_method", ""))[:50], "original_input": str(data.get("original_input", ""))[:1000], "occurred_at": occurred_at, "created_at": stamp_now(), "receipt_file": receipt_file or None, "receipt_drive_id": drive_receipt["id"] if drive_receipt else None, "receipt_drive_url": drive_receipt["url"] if drive_receipt else None, "receipt_name": drive_receipt["name"] if drive_receipt else None}
     try:
         create_record("transactions", record)
     except Exception:
         if saved_blob and saved_blob.exists():
             saved_blob.delete()
+        if drive_receipt:
+            try:
+                delete_google_drive_file(drive_receipt["id"])
+            except RuntimeError:
+                app.logger.warning("Failed to remove unlinked Google Drive receipt after transaction save failed")
         raise
     return jsonify(ok=True)
 
@@ -712,6 +966,11 @@ def delete_transaction(transaction_id):
     tx = get_record("transactions", transaction_id)
     if not tx:
         return jsonify(error="Transaksi tidak ditemukan"), 404
+    if tx.get("receipt_drive_id"):
+        try:
+            delete_google_drive_file(str(tx["receipt_drive_id"]))
+        except RuntimeError as exc:
+            return jsonify(error=str(exc)), 503
     delete_record("transactions", transaction_id)
     if tx.get("receipt_file"):
         blob = storage_bucket().blob("receipts/" + tx["receipt_file"])
@@ -766,7 +1025,7 @@ def parse_ai():
     image = request.files.get("receipt") if request.files else None
     image_data = None
     image_mime = None
-    image_extension = None
+    image_filename = None
     categories = [item for item in list_records("categories") if item.get("active", True)]
     accounts = [item for item in list_records("accounts") if item.get("active", True)]
     budgets = list_records("budgets")
@@ -783,7 +1042,8 @@ def parse_ai():
         if len(image_data) > app.config["MAX_UPLOAD_BYTES"]:
             return jsonify(error=f"Gambar harus JPG, PNG, WebP dan maksimal {app.config['MAX_UPLOAD_MB']} MB"), 400
         image_mime = image.mimetype
-        image_extension = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}[image_mime]
+        image_filename = os.path.basename(image.filename.replace("\\", "/"))
+        image_filename = "".join(char for char in image_filename if char.isprintable()).strip()[:120] or "struk"
     try:
         prompt = (ROOT / "prompts" / "transaction-extraction.md").read_text(encoding="utf-8")
         if provider == "gemini":
@@ -843,16 +1103,7 @@ def parse_ai():
         result["question"] = result.get("question") or ("Nominal belum terbaca. Mohon lengkapi sebelum menyimpan." if not result["amount"] else None)
         result["needs_confirmation"] = True
         if image_data:
-            receipt_file = secrets.token_hex(16) + image_extension
-            try:
-                blob = storage_bucket().blob("draft-receipts/" + receipt_file)
-                blob.upload_from_string(image_data, content_type=image_mime)
-            except Exception:
-                app.logger.warning("Firebase Storage could not save the receipt draft; keeping the parsed transaction", exc_info=True)
-                notice = "Foto struk berhasil dibaca, tetapi tidak tersimpan. Transaksi tetap bisa disimpan tanpa foto."
-                result["question"] = (str(result["question"]).strip() + " · " if result.get("question") else "") + notice
-            else:
-                result["receipt_file"] = receipt_file
+            result["receipt_name"] = image_filename
         return jsonify(draft=result)
     except requests.Timeout:
         return jsonify(error="Permintaan ke OpenAI melewati batas waktu. Coba lagi sebentar."), 504
