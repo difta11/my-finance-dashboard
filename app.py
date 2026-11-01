@@ -521,8 +521,14 @@ def categories_api():
     kind = data.get("kind")
     if not name or len(name) > 60 or kind not in ("income", "expense"):
         return jsonify(error="Nama kategori (maks. 60 karakter) dan jenis wajib diisi"), 400
-    if any(c.get("name", "").casefold() == name.casefold() and c.get("kind") == kind for c in list_records("categories")):
+    categories = list_records("categories")
+    active_match = next((c for c in categories if c.get("active", True) and c.get("name", "").casefold() == name.casefold() and c.get("kind") == kind), None)
+    if active_match:
         return jsonify(error="Kategori sudah ada"), 409
+    archived_match = next((c for c in categories if not c.get("active", True) and c.get("name", "").casefold() == name.casefold() and c.get("kind") == kind), None)
+    if archived_match:
+        firestore_client().collection("categories").document(archived_match["id"]).update({"name": name, "active": True})
+        return jsonify(ok=True, reactivated=True)
     create_record("categories", {"name": name, "kind": kind, "color": "#8794ff", "active": True})
     return jsonify(ok=True)
 
@@ -538,7 +544,7 @@ def update_category(category_id):
     category = next((item for item in categories if item["id"] == category_id and item.get("active", True)), None)
     if not category:
         return jsonify(error="Kategori tidak ditemukan"), 404
-    if any(item["id"] != category_id and item.get("kind") == category["kind"] and item.get("name", "").casefold() == name.casefold() for item in categories):
+    if any(item["id"] != category_id and item.get("active", True) and item.get("kind") == category["kind"] and item.get("name", "").casefold() == name.casefold() for item in categories):
         return jsonify(error="Kategori dengan nama tersebut sudah ada"), 409
     firestore_client().collection("categories").document(category_id).update({"name": name})
     return jsonify(ok=True)
@@ -554,7 +560,7 @@ def delete_category(category_id):
         return jsonify(error="Kategori yang masih dipakai transaksi tidak dapat dihapus"), 409
     if any(budget.get("active", True) and str(budget.get("category_id")) == category_id for budget in list_records("budgets")):
         return jsonify(error="Kategori yang masih dipakai budget tidak dapat dihapus"), 409
-    delete_record("categories", category_id)
+    firestore_client().collection("categories").document(category_id).update({"active": False})
     return jsonify(ok=True)
 
 
