@@ -28,7 +28,7 @@ const ax=box.querySelector('.chart-yaxis');let need=0;
 ax.querySelectorAll('.chart-last').forEach(gr=>{const tx=gr.querySelector('text'),rc=gr.querySelector('rect'),len=tx.getComputedTextLength();if(len>0){const w=Math.ceil(len+12);rc.setAttribute('width',w);tx.setAttribute('x',2+w/2);need=Math.max(need,w+4)}});
 ax.querySelectorAll('.chart-axis').forEach(tx=>{const len=tx.getComputedTextLength();if(len>0)need=Math.max(need,Math.ceil(6+len+4))});
 const rpMax=axisMax/100,unit=rpMax>=1e12?1e12:rpMax>=1e9?1e9:rpMax>=1e6?1e6:rpMax>=1e3?1e3:1;
-if(unit>1){const probe=document.createElementNS('http://www.w3.org/2000/svg','text');probe.setAttribute('font-size','11');probe.setAttribute('font-weight','600');probe.textContent='Rp '+compact3((Math.floor(rpMax/unit)+.88)*unit);ax.appendChild(probe);const len=probe.getComputedTextLength();probe.remove();if(len>0)need=Math.max(need,Math.ceil(len+16))}
+[1,1e3,1e6,1e9,1e12].filter(u=>u<=unit).forEach(u=>{const probe=document.createElementNS('http://www.w3.org/2000/svg','text');probe.setAttribute('font-size','11');probe.setAttribute('font-weight','600');probe.textContent='Rp '+compact3(888.88*u);ax.appendChild(probe);const len=probe.getComputedTextLength();probe.remove();if(len>0)need=Math.max(need,Math.ceil(len+16))});
 if(need>0&&!axisWOverride&&need!==axisW)return renderDailyChart(series,start,end,keepScroll,need);
 const scroller=box.querySelector('.chart-scroll');scroller.scrollLeft=keepScroll?prevScroll:scroller.scrollWidth;
 attachChartCrosshair(box,{W,left,right,top,plotW,plotH,axisW,axisMax,axisSpan,points,fmt:v=>'Rp '+compact3(v/100)});
