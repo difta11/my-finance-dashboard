@@ -2,55 +2,240 @@
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Masuk · My Finance Dashboard</title>
-  <link rel="icon" href="/static/brand-logo.png" type="image/png">
-  <link rel="stylesheet" href="/static/app.css">
-</head>
-<body class="login-bg">
-  <form id="login" class="login-card">
-    <span class="brand-icon login-brand-icon"><img class="brand-logo" src="/static/brand-logo.png" alt=""></span>
-    <p class="eyebrow">KEUANGAN PRIBADI</p>
-    <h1>My Finance Dashboard</h1>
-    <p class="muted">Masuk ke dashboard keuangan privat Anda.</p>
-    <label>Kata sandi<input name="password" type="password" autocomplete="current-password" required autofocus></label>
-    <button class="primary" type="submit">Masuk ke dashboard <span aria-hidden="true">&rarr;</span></button>
-    <p id="error" class="error" role="alert" aria-live="polite"></p>
-  </form>
+  <link rel="icon" href="/static/duipta logo cropped.png" type="image/png">
+  <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#0d7a57',
+              700: '#065f46',
+              800: '#064e3b',
+              900: '#022c22',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .mesh-gradient-bg {
+      background-color: #f7faf8;
+      background-image: 
+        radial-gradient(at 10% 20%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+        radial-gradient(at 90% 10%, rgba(13, 122, 87, 0.06) 0px, transparent 50%),
+        radial-gradient(at 50% 90%, rgba(5, 150, 105, 0.05) 0px, transparent 60%);
+    }
+    .custom-shadow {
+      box-shadow: 0 20px 40px -15px rgba(6, 78, 59, 0.07), 0 0 1px 1px rgba(13, 122, 87, 0.05);
+    }
+  </style>
+</head>
+<body class="mesh-gradient-bg min-h-screen text-slate-800 flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+  <!-- Top Navigation / Brand Header -->
+  <header class="w-full max-w-7xl mx-auto px-6 py-5 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-emerald-900 flex items-center justify-center text-white shadow-md shadow-brand-600/20 overflow-hidden">
+        <img class="w-7 h-7 object-contain" src="/static/duipta logo cropped.png" alt="My Finance Logo" onerror="this.style.display='none'; document.getElementById('fallback-logo').classList.remove('hidden')">
+        <svg id="fallback-logo" class="w-6 h-6 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-lg tracking-tight text-slate-900">My Finance</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 border border-brand-200">v2.4</span>
+        </div>
+        <p class="text-xs text-slate-500 font-medium">Personal Wealth &amp; Finance</p>
+      </div>
+    </div>
+    <!-- Security Status Badge -->
+    <div class="hidden sm:flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-brand-50/90 border border-brand-200/80 px-3.5 py-1.5 rounded-full shadow-2xs">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
+      </span>
+      <span>Brankas Privat Terenkripsi</span>
+    </div>
+  </header>
+
+  <!-- Authentication Section -->
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 flex items-center justify-center">
+    <div class="w-full bg-white border border-slate-200/80 rounded-3xl custom-shadow overflow-hidden max-w-md">
+      <section class="p-6 sm:p-10 flex flex-col justify-center bg-white">
+        <div class="w-full">
+          <!-- Category Indicator -->
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-2.5 py-1 rounded-md border border-brand-200/70">
+              KEUANGAN PRIBADI
+            </span>
+          </div>
+
+          <!-- Greeting Header -->
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-1">
+            Selamat Datang Kembali
+          </h1>
+          <p class="text-sm text-slate-500 mt-1.5 mb-6 leading-relaxed">
+            Masukkan kata sandi brankas Anda untuk melanjutkan ke dashboard keuangan.
+          </p>
+
+          <!-- Form Area -->
+          <form id="login" class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700" for="password">
+                  Kata Sandi Brankas
+                </label>
+              </div>
+
+              <!-- Password Input Group -->
+              <div class="relative rounded-xl shadow-xs">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  required
+                  autofocus
+                  placeholder="Masukkan kata sandi master Anda"
+                  class="block w-full px-4 py-3 pr-11 text-slate-800 placeholder-slate-400 text-sm bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-600 transition"
+                >
+                <!-- Toggle Password Visibility -->
+                <button
+                  type="button"
+                  id="toggle-password"
+                  aria-label="Tampilkan atau sembunyikan kata sandi"
+                  class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                >
+                  <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="error" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 p-3 rounded-xl font-medium" role="alert" aria-live="polite"></div>
+
+            <!-- Primary Submission CTA -->
+            <button
+              id="submit-btn"
+              type="submit"
+              class="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-white bg-brand-600 hover:bg-brand-700 active:bg-brand-800 transition duration-150 shadow-md shadow-brand-600/25 hover:shadow-brand-600/35 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 active:scale-98 cursor-pointer"
+            >
+              <span id="btn-text">Masuk ke Dashboard</span>
+              <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+          </form>
+
+          <!-- Security note -->
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>Single-owner instance • Otentikasi terproteksi</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full max-w-7xl mx-auto px-6 py-5 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span>Sistem Keuangan Pribadi v2.4 • Terisolasi &amp; Aman</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span>© 2026 My Finance Dashboard</span>
+    </div>
+  </footer>
+
+  <script>
+    // Password visibility toggle
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('toggle-password');
+    const eyeIcon = document.getElementById('eye-icon');
+
+    if (toggleButton && passwordInput && eyeIcon) {
+      toggleButton.addEventListener('click', () => {
+        const isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        if (isPassword) {
+          eyeIcon.innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+          `;
+        } else {
+          eyeIcon.innerHTML = `
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          `;
+        }
+      });
+    }
+
+    // Login Form Handler
     const loginForm = document.querySelector('#login');
     const loginError = document.querySelector('#error');
-    const loginButton = loginForm.querySelector('button[type="submit"]');
-    const loginButtonText = loginButton.innerHTML;
+    const submitBtn = document.querySelector('#submit-btn');
+    const btnText = document.querySelector('#btn-text');
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      loginError.classList.add('hidden');
       loginError.textContent = '';
-      loginButton.disabled = true;
-      loginButton.textContent = 'Memeriksa...';
+      submitBtn.disabled = true;
+      btnText.textContent = 'Memeriksa kredensial...';
+
       try {
         const response = await fetch('/api/login', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: loginForm.elements.password.value })
+          body: JSON.stringify({ password: passwordInput.value })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || `Login gagal (HTTP ${response.status}).`);
-        if (!result.csrf) throw new Error('Server tidak memberikan token sesi. Periksa log aplikasi.');
+        if (!result.csrf) throw new Error('Server tidak memberikan token sesi. Periksa konfigurasi aplikasi.');
 
         sessionStorage.setItem('csrf', result.csrf);
         const sessionResponse = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
         const sessionState = await sessionResponse.json().catch(() => ({}));
         if (!sessionResponse.ok || !sessionState.authenticated) {
-          throw new Error('Kata sandi diterima, tetapi sesi login tidak tersimpan. Pastikan SESSION_SECRET tetap sama dan server hanya berjalan satu kali.');
+          throw new Error('Kata sandi diterima, tetapi sesi login tidak tersimpan. Pastikan SESSION_SECRET tetap sama.');
         }
         location.replace('/');
       } catch (error) {
-        loginError.textContent = error.message || 'Login gagal. Pastikan server lokal berjalan lalu coba lagi.';
+        loginError.textContent = error.message || 'Login gagal. Periksa kata sandi dan pastikan server berjalan.';
+        loginError.classList.remove('hidden');
       } finally {
-        loginButton.disabled = false;
-        loginButton.innerHTML = loginButtonText;
+        submitBtn.disabled = false;
+        btnText.textContent = 'Masuk ke Dashboard';
       }
     });
   </script>

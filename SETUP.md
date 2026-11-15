@@ -87,7 +87,7 @@ Buka file `.env` kamu. Masih ada beberapa variabel yang harus diisi secara mandi
 
 ---
 
-## Tahap 6: Mengatur Fitur Tanya AI (Gemini)
+## Tahap 6: Mengatur Smart Entry (Gemini)
 
 Agar fitur AI untuk membaca struk dan mencatat transaksi berfungsi, kita akan menghubungkannya dengan Google Gemini secara gratis.
 
