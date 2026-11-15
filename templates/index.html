@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Finance Dashboard</title>
-  <link rel="icon" href="/static/duipta logo cropped.png" type="image/png">
+  <link rel="icon" href="/static/favicon.png" type="image/png">
+  <!-- Theme before first paint, so dark mode never flashes white. -->
+  <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
 
   <!-- Google Fonts: Plus Jakarta Sans, Inter & Material Symbols -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,7 +43,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/static/app.css?v=51">
+  <link rel="stylesheet" href="/static/app.css?v=54">
 </head>
 <body>
   <div class="shell">
@@ -51,10 +53,8 @@
         <!-- App Brand -->
         <a class="brand" href="#">
           <span class="brand-icon">
-            <img class="brand-logo" src="/static/duipta logo cropped.png" alt="My Finance Dashboard" onerror="this.style.display='none'; document.getElementById('sidebar-fallback-icon').classList.remove('hidden')">
-            <svg id="sidebar-fallback-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <!-- brand-mark.png (white smiley) is used as a mask, so it takes the brand colour in both themes -->
+            <span class="brand-mark" role="img" aria-label="My Finance Dashboard"></span>
           </span>
           <div class="brand-title-wrap">
             <span class="brand-title">My Finance Dashboard</span>
@@ -116,7 +116,7 @@
             <span class="nav-budget-dot" id="nav-budget-dot" hidden></span>
           </button>
 
-          <!-- Wish & Target -->
+          <!-- Wish -->
           <button class="nav" data-view="wishes" type="button">
             <div class="nav-left">
               <span class="nav-icon">
@@ -124,7 +124,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </span>
-              <span>Wish &amp; Target</span>
+              <span>Wish</span>
             </div>
           </button>
 
@@ -187,6 +187,14 @@
           <!-- Refresh Button -->
           <button class="icon-btn" id="refresh" title="Muat ulang data" aria-label="Muat ulang">
             <span class="material-symbols-outlined text-[18px]">sync</span>
+          </button>
+
+          <!-- Light / dark mode -->
+          <button type="button" class="icon-btn theme-toggle" id="theme-toggle" aria-pressed="false" title="Mode gelap" aria-label="Mode gelap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path class="theme-fill" d="M20.5 13.6A8.5 8.5 0 1 1 10.4 3.5a6.6 6.6 0 0 0 10.1 10.1Z"/>
+              <path class="theme-fill" d="M18 2.8l.75 1.95 1.95.75-1.95.75L18 8.2l-.75-1.95-1.95-.75 1.95-.75Z"/>
+            </svg>
           </button>
 
           <!-- New Transaction Primary CTA -->
@@ -1140,14 +1148,14 @@
   <div id="toast" class="toast"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="/static/app.js?v=51"></script>
-  <script src="/static/ai.js?v=51"></script>
-  <script src="/static/categories.js?v=51"></script>
-  <script src="/static/wishes.js?v=51"></script>
-  <script src="/static/budgets.js?v=51"></script>
-  <script src="/static/behaviour.js?v=51"></script>
-  <script src="/static/history.js?v=51"></script>
-  <script src="/static/profiles.js?v=51"></script>
+  <script src="/static/app.js?v=54"></script>
+  <script src="/static/ai.js?v=54"></script>
+  <script src="/static/categories.js?v=54"></script>
+  <script src="/static/wishes.js?v=54"></script>
+  <script src="/static/budgets.js?v=54"></script>
+  <script src="/static/behaviour.js?v=54"></script>
+  <script src="/static/history.js?v=54"></script>
+  <script src="/static/profiles.js?v=54"></script>
 
   <!-- Global Keyboard Shortcuts & Helpers -->
   <script>

@@ -1,7 +1,6 @@
 (()=>{
   const money=cents=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format((Number(cents)||0)/100);
   const monthYear=iso=>new Date(iso+'T00:00:00').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
-  const fullDate=iso=>new Date(iso+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
   const DEFICIT_TEXT='Arus kas bulanan masih defisit — tingkatkan surplus untuk menghitung estimasi.';
   const form=document.querySelector('#wish-form'),submitButton=form.querySelector('button[type="submit"]');
   const fundDialog=document.querySelector('#wish-fund-dialog'),fundForm=document.querySelector('#wish-fund-form');
@@ -21,20 +20,15 @@
 
   const renderRates=()=>{
     const s=stats(),value=surplus();
-    let note;
-    if(!s.has_data){
-      note='Belum ada transaksi. Rata-rata dihitung setelah Anda mulai mencatat pemasukan dan pengeluaran.';
-    }else{
-      const months=Number(s.active_months)||1;
-      note=`Rata-rata arus kas dari ${fullDate(s.window_start)} sampai ${fullDate(s.window_end)} (${new Intl.NumberFormat('id-ID',{maximumFractionDigits:1}).format(months)} bulan aktif, maks. 3 bulan).`;
-    }
+    // Only the empty state gets a note; with data the three numbers speak for themselves.
+    const note=s.has_data?'':'Belum ada transaksi. Rata-rata dihitung setelah Anda mulai mencatat pemasukan dan pengeluaran.';
     document.querySelector('#wish-rates').innerHTML=`
       <div class="wish-rate-grid">
         <div><small>Rata-rata pemasukan / bulan</small><b class="green">${money(s.avg_income_cents)}</b></div>
         <div><small>Rata-rata pengeluaran / bulan</small><b class="coral">${money(s.avg_expense_cents)}</b></div>
         <div><small>Surplus bersih / bulan</small><b class="${value>0?'green':'coral'}">${value<0?'−':''}${money(Math.abs(value))}</b></div>
       </div>
-      <p class="wish-rate-note">${note}</p>`;
+      ${note?`<p class="wish-rate-note">${note}</p>`:''}`;
   };
 
   const projection=w=>{
@@ -103,8 +97,8 @@
     if(!Array.isArray(state.wishes))return;
     renderRates();
     const list=document.querySelector('#wish-list');
-    // Dashed card at the end opens the create form (replaces the old "Tambah target impian" button).
-    list.innerHTML=state.wishes.map(card).join('')+addCard('Tambah target impian','data-add-wish');
+    // Dashed card at the end opens the create form.
+    list.innerHTML=state.wishes.map(card).join('')+addCard('Tambah impian','data-add-wish');
   };
 
   /* ---------- Create / edit form ---------- */

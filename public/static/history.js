@@ -207,8 +207,12 @@
             const url=t.receipt_drive_url||(t.receipt_drive_id?'https://drive.google.com/open?id='+encodeURIComponent(t.receipt_drive_id):'');
             const category=t.kind==='transfer'?'<span class="text-slate-400">—</span>'
               :selectCell(t,'category_id',(state.categories||[]).filter(c=>c.kind===t.kind),t.category_id,t.category,'Pilih kategori','Kategori');
-            const source=selectCell(t,'account_id',accounts.filter(a=>t.kind!=='transfer'||String(a.id)!==String(t.destination_id)),t.account_id,t.account,'Pilih akun','Akun sumber');
-            const destination=t.kind!=='transfer'?'<span class="text-slate-400">—</span>'
+            // Income lands in its account, so that account is shown as "Akun tujuan".
+            const empty='<span class="text-slate-400">—</span>';
+            const source=t.kind==='income'?empty
+              :selectCell(t,'account_id',accounts.filter(a=>t.kind!=='transfer'||String(a.id)!==String(t.destination_id)),t.account_id,t.account,'Pilih akun','Akun sumber');
+            const destination=t.kind==='income'?selectCell(t,'account_id',accounts,t.account_id,t.account,'Pilih akun','Akun tujuan')
+              :t.kind!=='transfer'?empty
               :selectCell(t,'destination_id',accounts.filter(a=>String(a.id)!==String(t.account_id)),t.destination_id,t.destination,'Pilih akun','Akun tujuan');
             return `<tr>
               ${idCell(t)}
