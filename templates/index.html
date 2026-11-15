@@ -43,7 +43,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/static/app.css?v=59">
+  <link rel="stylesheet" href="/static/app.css?v=63">
 </head>
 <body>
   <div class="shell">
@@ -175,8 +175,10 @@
           <!-- Time Range Selector -->
           <!-- Phones: the sidebar footer is hidden, so profile/logout live here -->
           <div class="action-menu mobile-account-menu" data-action-menu>
-            <button type="button" class="icon-btn action-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Akun" title="Akun">
+            <button type="button" class="action-menu-trigger mobile-profile-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Profil" title="Profil">
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">account_circle</span>
+              <span class="mobile-profile-name" data-profile-name>Profil</span>
+              <span class="material-symbols-outlined mobile-profile-chevron" aria-hidden="true">expand_more</span>
             </button>
             <div class="action-menu-list" role="menu" hidden>
               <div data-profile-menu class="mobile-profile-items"></div>
@@ -1146,14 +1148,14 @@
   <div id="toast" class="toast"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="/static/app.js?v=59"></script>
-  <script src="/static/ai.js?v=59"></script>
-  <script src="/static/categories.js?v=59"></script>
-  <script src="/static/wishes.js?v=59"></script>
-  <script src="/static/budgets.js?v=59"></script>
-  <script src="/static/behaviour.js?v=59"></script>
-  <script src="/static/history.js?v=59"></script>
-  <script src="/static/profiles.js?v=59"></script>
+  <script src="/static/app.js?v=63"></script>
+  <script src="/static/ai.js?v=63"></script>
+  <script src="/static/categories.js?v=63"></script>
+  <script src="/static/wishes.js?v=63"></script>
+  <script src="/static/budgets.js?v=63"></script>
+  <script src="/static/behaviour.js?v=63"></script>
+  <script src="/static/history.js?v=63"></script>
+  <script src="/static/profiles.js?v=63"></script>
 
   <!-- Global Keyboard Shortcuts & Helpers -->
   <script>
