@@ -1,3 +1,1181 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My Finance Dashboard</title><link rel="icon" href="/static/duipta logo cropped.png" type="image/png"><link rel="stylesheet" href="/static/app.css?v=24"></head><body><div class="shell"><aside class="sidebar"><a class="brand" href="#"><span class="brand-icon"><img class="brand-logo" src="/static/brand-logo.png" alt=""></span><span>My Finance Dashboard<span class="brand-sub">PERSONAL FINANCE</span></span></a><div class="side-label">MENU</div><button class="nav active" data-view="overview"><span>Dashboard</span></button><button class="nav" data-view="transactions"><span>Transaksi</span></button><button class="nav" data-view="accounts"><span>Akun</span></button><button class="nav" data-view="budgetting"><span>Budgetting</span></button><button class="nav" data-view="wishes"><span>Wish</span></button><button class="nav" data-view="behaviour"><span>Behaviour</span></button><div class="side-bottom"><button id="logout" class="nav">&#8617; <span>Keluar</span></button></div></aside><main><header><div><div class="eyebrow">RUANG KEUANGAN ANDA</div><h1 id="heading">Dashboard</h1></div><div class="head-actions"><label class="time-range-label" for="time-range">Time range</label><select id="time-range" aria-label="Time range"><option value="1day">1 day</option><option value="1week">1 week</option><option value="1month" selected>1 month</option><option value="3month">3 month</option><option value="1year">1 year</option><option value="all">All transaction</option></select><button class="icon-btn" id="refresh" title="Muat ulang">&#8635;</button><button class="primary compact" id="add">+ Transaksi</button></div></header><section id="overview"><div class="hero"><div><div class="hero-label">TOTAL ASET <span class="live-dot"></span></div><div id="assets" class="hero-value">&#8212;</div><div class="hero-caption">Saldo gabungan seluruh akun aktif</div></div><div class="hero-art">&#9711;<span>&#9711;</span></div></div><div class="metrics"><article class="metric"><div class="metric-title">Pemasukan <span class="metric-icon green">&#8599;</span></div><strong id="income">&#8212;</strong><small>Periode terpilih</small></article><article class="metric"><div class="metric-title">Pengeluaran <span class="metric-icon coral">&#8600;</span></div><strong id="expense">&#8212;</strong><small>Periode terpilih</small></article><article class="metric"><div class="metric-title">Arus kas bersih <span class="metric-icon blue">&#8776;</span></div><strong id="net">&#8212;</strong><small>Pemasukan dikurangi pengeluaran</small></article></div><div id="warning" class="warning hidden"></div><article class="panel daily-panel"><div class="panel-head"><div><h2>Total aset dan pengeluaran per hari</h2><p>Saldo aset akhir hari dan total pengeluaran pada periode terpilih</p></div><div class="daily-legend"><span><i class="asset-line"></i>Total aset</span><span><i class="expense-line"></i>Pengeluaran</span></div></div><div id="daily-chart" class="daily-chart" role="img" aria-label="Grafik garis total aset dan pengeluaran per hari"></div></article><div class="content-grid"><article class="panel"><div class="panel-head"><div><h2>Pengeluaran per kategori</h2><p>Distribusi dalam periode terpilih</p></div></div><div id="categories-chart" class="bars"></div></article><article class="panel"><div class="panel-head"><div><h2>Akun Anda</h2><p>Saldo terkini dan komposisi aset</p></div><button class="text-btn" data-goto="accounts">Kelola &#8594;</button></div><div id="account-list" class="account-list"></div></article></div><article class="panel recent"><div class="panel-head"><div><h2>Transaksi terbaru</h2><p>Aktivitas keuangan Anda</p></div><button class="text-btn" data-goto="transactions">Semua transaksi &#8594;</button></div><div id="recent-list"></div></article></section><section id="budgetting" class="hidden"><div class="budget-create-area"><button id="show-budget-form" class="primary" type="button">Buat budget</button><form id="budget-form" class="panel budget-form-panel hidden"><div class="panel-head"><div><h2>Budget baru</h2><p>Hubungkan budget dengan kategori pengeluaran.</p></div><button id="cancel-budget-form" class="icon-btn" type="button" aria-label="Tutup form budget">&#215;</button></div><div class="budget-form-grid"><label>Nama budget<input name="name" maxlength="80" placeholder="Contoh: Makan" required></label><label>Nominal alokasi (Rp)<input name="amount" inputmode="numeric" data-money placeholder="200000" required></label><label>Kategori pengeluaran<select name="category_id" id="budget-category" required></select></label></div><div class="dialog-actions"><button class="secondary" id="cancel-budget" type="button">Batal</button><button class="primary" type="submit" disabled>Simpan budget</button></div></form></div><div id="budget-grid" class="budget-grid"></div></section>
-<section id="wishes" class="hidden"><div id="wish-rates" class="wish-rate-section"></div><div class="wish-create-area"><button id="show-wish-form" class="primary" type="button">Tambah impian</button><form id="wish-form" class="panel wish-form-panel hidden"><div class="panel-head"><div><h2>Impian baru</h2><p>Masukkan nama dan harga target impian Anda.</p></div><button id="close-wish-form" class="icon-btn" type="button" aria-label="Tutup form impian">&#215;</button></div><div class="wish-form-fields"><label>Nama impian<input name="name" maxlength="80" placeholder="Contoh: Laptop baru" required></label><label>Harga target (Rp)<input name="target" inputmode="numeric" data-money placeholder="15000000" required></label></div><div class="dialog-actions"><button id="cancel-wish" class="secondary" type="button">Batal</button><button class="primary" type="submit">Simpan impian</button></div></form></div><div id="wish-list" class="wish-grid"></div></section><section id="behaviour" class="hidden"><article class="panel behaviour-calendar-panel"><div class="panel-head"><div><h2>Spending calendar</h2><p>Bulan berjajar ke kanan dan hari ke bawah. Warna makin pekat berarti pengeluaran harian makin besar.</p></div><div class="calendar-year-control"><label for="behaviour-year">Tahun</label><select id="behaviour-year" aria-label="Pilih tahun Behaviour"></select></div></div><div class="behaviour-calendar-scroll"><div id="spending-calendar" class="spending-calendar"></div></div><div class="calendar-legend"><span>Lebih sedikit</span><i class="level-0"></i><i class="level-1"></i><i class="level-2"></i><i class="level-3"></i><i class="level-4"></i><span>Lebih banyak</span></div></article><div class="behaviour-grid"><article class="panel"><div class="panel-head"><div><h2>Jam paling sering bertransaksi</h2><p>Jumlah transaksi menurut jam pencatatan.</p></div></div><p id="busiest-hour" class="behaviour-highlight"></p><div class="hour-chart-scroll"><div id="hour-chart" class="hour-chart"></div></div></article><article class="panel"><div class="panel-head"><div><h2>Spending weekend vs weekday</h2><p>Perbandingan rata-rata pengeluaran per hari agar jumlah hari tidak membiasakan hasil.</p></div></div><div id="spending-comparison" class="spending-comparison"></div></article><article class="panel daily-average-card"><div class="panel-head"><div><h2>Rata-rata pengeluaran harian</h2><p>Dihitung dari semua hari pada tahun terpilih, termasuk hari tanpa pengeluaran.</p></div></div><strong id="daily-spending-average" class="daily-average-value">—</strong><p id="daily-spending-context" class="muted"></p></article></div></section>
-<section id="transactions" class="hidden"><div class="transaction-subnav" role="tablist" aria-label="Fitur transaksi"><button type="button" role="tab" aria-selected="true" class="selected" data-transaction-tab="transactions">Transaksi</button><button type="button" role="tab" aria-selected="false" data-transaction-tab="categories">Kategori</button></div><div id="transaction-list-view"><article class="panel"><div class="panel-head"><div><h2>Semua transaksi</h2><p>Catat, telusuri, dan hapus transaksi</p></div><a class="text-btn" href="/api/export.csv">&#8595; Ekspor CSV</a></div><div class="filters"><input id="search" placeholder="Cari transaksi&#8230;"><select id="type-filter"><option value="">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select></div><div id="all-list"></div></article></div><div id="transaction-categories-view" class="hidden"><div class="category-active-grid"><article class="panel category-kind-block" data-category-block="expense"><h3>Pengeluaran</h3><div id="category-expense-list"></div><button type="button" class="secondary category-add" data-add-category="expense">+ Tambah kategori</button><form class="category-create-form hidden" data-category-form="expense"><label>Nama kategori<input name="name" maxlength="60" placeholder="Contoh: Perawatan kucing" required></label><div class="dialog-actions"><button type="button" class="secondary" data-cancel-category="expense">Batal</button><button class="primary">Simpan kategori</button></div></form></article><article class="panel category-kind-block" data-category-block="income"><h3>Pemasukan</h3><div id="category-income-list"></div><button type="button" class="secondary category-add" data-add-category="income">+ Tambah kategori</button><form class="category-create-form hidden" data-category-form="income"><label>Nama kategori<input name="name" maxlength="60" placeholder="Contoh: Komisi" required></label><div class="dialog-actions"><button type="button" class="secondary" data-cancel-category="income">Batal</button><button class="primary">Simpan kategori</button></div></form></article></div></div></section><section id="accounts" class="hidden"><div class="section-title"><button class="primary compact" id="new-account">+ Tambah akun</button></div><div id="account-cards" class="account-cards"></div></section></main></div><dialog id="tx-dialog"><form id="tx-form" method="dialog"><div class="dialog-head"><div><div class="eyebrow">CATAT AKTIVITAS</div><h2>Transaksi baru</h2></div><button type="button" class="icon-btn" id="close-tx">&#215;</button></div><div class="type-tabs"><button type="button" class="selected" data-kind="expense">Pengeluaran</button><button type="button" data-kind="income">Pemasukan</button><button type="button" data-kind="transfer">Transfer</button></div><label>Nominal (Rp)<input name="amount" inputmode="numeric" data-money placeholder="25000" required></label><label>Kategori<select name="category_id"></select></label><label>Akun<select name="account_id"></select></label><label id="destination-wrap" class="hidden">Akun tujuan<select name="destination_id"></select></label><label>Deskripsi<input name="description" placeholder="Contoh: Makan siang"></label><input type="hidden" name="payment_method"><input type="hidden" name="original_input"><input type="hidden" name="receipt_file"><input type="file" name="receipt" accept="image/jpeg,image/png,image/webp" hidden><small id="tx-receipt-info" class="muted hidden"></small><label>Tanggal dan waktu<input name="occurred_at" type="datetime-local"></label><div class="dialog-actions"><button type="button" class="secondary" id="cancel-tx">Batal</button><button class="primary">Simpan transaksi</button></div></form></dialog><dialog id="delete-account-dialog"><form id="delete-account-form" method="dialog"><div class="dialog-head"><div><div class="eyebrow">HAPUS AKUN</div><h2 id="delete-account-title">Alihkan saldo akun</h2></div><button type="button" class="icon-btn" id="close-delete-account">&#215;</button></div><input type="hidden" name="account_id"><p id="delete-account-message" class="muted"></p><label>Alihkan saldo ke akun<select name="destination_id" required></select></label><small id="delete-account-hint" class="muted"></small><div class="dialog-actions"><button type="button" class="secondary" id="cancel-delete-account">Batal</button><button class="primary">Alihkan dan hapus</button></div></form></dialog><dialog id="account-dialog"><form id="account-form" method="dialog"><div class="dialog-head"><div><div class="eyebrow">AKUN BARU</div><h2>Tambah akun</h2></div><button type="button" class="icon-btn" id="close-account">&#215;</button></div><label>Nama akun<input name="name" placeholder="Contoh: BCA" required></label><label>Jenis<select name="kind"><option value="bank">Bank</option><option value="cash">Tunai</option><option value="ewallet">Dompet digital</option><option value="other">Lainnya</option></select></label><label>Saldo awal (Rp)<input name="initial_balance" inputmode="numeric" data-money value="0"></label><div class="dialog-actions"><button type="button" class="secondary" id="cancel-account">Batal</button><button class="primary">Simpan akun</button></div></form></dialog><div id="toast" class="toast"></div><script src="/static/app.js?v=26"></script><script src="/static/ai.js?v=11"></script><script src="/static/categories.js?v=12"></script><script src="/static/wishes.js?v=4"></script><script src="/static/budgets.js?v=3"></script><script src="/static/behaviour.js?v=5"></script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Finance Dashboard</title>
+  <link rel="icon" href="/static/duipta logo cropped.png" type="image/png">
+
+  <!-- Google Fonts: Plus Jakarta Sans, Inter & Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS v3 CDN with forms & container queries -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#0d7a57',
+              700: '#0a6346',
+              800: '#074e36',
+              900: '#043424',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+            mono: ['Inter', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="/static/app.css?v=51">
+</head>
+<body>
+  <div class="shell">
+    <!-- BEGIN: Left Sidebar -->
+    <aside class="sidebar" data-purpose="main-sidebar">
+      <div class="sidebar-content">
+        <!-- App Brand -->
+        <a class="brand" href="#">
+          <span class="brand-icon">
+            <img class="brand-logo" src="/static/duipta logo cropped.png" alt="My Finance Dashboard" onerror="this.style.display='none'; document.getElementById('sidebar-fallback-icon').classList.remove('hidden')">
+            <svg id="sidebar-fallback-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <div class="brand-title-wrap">
+            <span class="brand-title">My Finance Dashboard</span>
+          </div>
+        </a>
+
+        <!-- Menu Utama -->
+        <div class="side-label">MENU UTAMA</div>
+        <nav class="nav-group" aria-label="Menu Utama">
+          <!-- Dashboard -->
+          <button class="nav active" data-view="overview" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </span>
+              <span>Dashboard</span>
+            </div>
+          </button>
+
+          <!-- Transaksi -->
+          <button class="nav" data-view="transactions" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </span>
+              <span>Transaksi</span>
+            </div>
+            <span class="nav-pill nav-pill-new" id="sidebar-tx-badge" hidden></span>
+          </button>
+
+          <!-- Akun & Dompet -->
+          <button class="nav" data-view="accounts" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </span>
+              <span>Akun &amp; Dompet</span>
+            </div>
+          </button>
+
+          <!-- Budgeting -->
+          <button class="nav" data-view="budgetting" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg>
+              </span>
+              <span>Budgeting</span>
+            </div>
+            <!-- Shown only when a budget is yellow or red; colour = the most urgent budget -->
+            <span class="nav-budget-dot" id="nav-budget-dot" hidden></span>
+          </button>
+
+          <!-- Wish & Target -->
+          <button class="nav" data-view="wishes" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </span>
+              <span>Wish &amp; Target</span>
+            </div>
+          </button>
+
+          <!-- Behaviour -->
+          <button class="nav" data-view="behaviour" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </span>
+              <span>Behaviour</span>
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sidebar footer: profile, logout -->
+      <div class="side-footer">
+        <div class="side-actions">
+          <!-- Profile switcher: opens upward (drop-up) with the other profiles + "Tambah profil" -->
+          <div class="action-menu profile-switcher" data-action-menu>
+            <button type="button" class="action-menu-trigger profile-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Profil" title="Ganti profil">
+              <span class="profile-avatar sm" data-profile-avatar aria-hidden="true">?</span>
+              <span class="profile-trigger-text"><b data-profile-name>Profil</b><small>Ganti profil</small></span>
+              <span class="material-symbols-outlined profile-trigger-icon" aria-hidden="true">unfold_more</span>
+            </button>
+            <div class="action-menu-list profile-menu" role="menu" hidden data-profile-menu></div>
+          </div>
+          <button type="button" class="side-action danger" id="logout" title="Keluar" aria-label="Keluar">
+            <span class="material-symbols-outlined" aria-hidden="true">logout</span><span>Keluar</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+    <!-- END: Left Sidebar -->
+
+    <!-- BEGIN: Main Viewport Content -->
+    <main>
+      <!-- BEGIN: Sticky TopBar -->
+      <header class="topbar">
+        <div class="breadcrumb-area">
+          <h1 id="heading">Dashboard</h1>
+          <span id="storage-chip" class="storage-chip" tabindex="0" hidden></span>
+        </div>
+
+        <div class="head-actions">
+          <!-- Time Range Selector -->
+          <!-- Phones: the sidebar footer is hidden, so profile/logout live here -->
+          <div class="action-menu mobile-account-menu" data-action-menu>
+            <button type="button" class="icon-btn action-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Akun" title="Akun">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">account_circle</span>
+            </button>
+            <div class="action-menu-list" role="menu" hidden>
+              <div data-profile-menu class="mobile-profile-items"></div>
+              <button type="button" role="menuitem" class="danger" data-logout><span class="material-symbols-outlined text-[18px]" aria-hidden="true">logout</span><span>Keluar</span></button>
+            </div>
+          </div>
+
+          <!-- Refresh Button -->
+          <button class="icon-btn" id="refresh" title="Muat ulang data" aria-label="Muat ulang">
+            <span class="material-symbols-outlined text-[18px]">sync</span>
+          </button>
+
+          <!-- New Transaction Primary CTA -->
+          <button class="primary" id="add" type="button">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            <span>Catat Transaksi</span>
+            <kbd>N</kbd>
+          </button>
+        </div>
+      </header>
+      <!-- END: Sticky TopBar -->
+
+      <div class="content-body">
+        <!-- Local mode on Vercel loses data: say so loudly -->
+        <div id="storage-warning" class="storage-warning" role="alert" hidden></div>
+        <!-- ================================================================== -->
+        <!-- TAB 1: OVERVIEW / DASHBOARD                                       -->
+        <!-- ================================================================== -->
+        <section id="overview" class="ov-wrap">
+          <!-- METRICS 4-CARDS ROW -->
+          <div class="ov-metrics">
+            <!-- Hero: Total Aset -->
+            <article class="ov-card ov-card-hero">
+              <div class="ov-card-hero-bg-ring ov-ring1"></div>
+              <div class="ov-card-hero-bg-ring ov-ring2"></div>
+              <div class="ov-card-hero-inner">
+                <div class="ov-card-hero-top flex items-center justify-between">
+                  <div class="ov-overline-row">
+                    <span class="ov-overline">TOTAL ASET</span>
+                    <span class="live-dot-green"></span>
+                  </div>
+                  <!-- Hide/Show Toggle Button -->
+                  <button type="button" id="money-toggle" class="ov-eye-btn" title="Sembunyikan nominal" aria-label="Sembunyikan nominal">
+                    <span class="material-symbols-outlined text-[16px]" id="mask-icon">visibility_off</span>
+                  </button>
+                </div>
+                <div class="ov-hero-amount">
+                  <span class="ov-rp-prefix">Rp</span>
+                  <strong id="assets">&#8212;</strong>
+                </div>
+              </div>
+            </article>
+
+            <!-- Pemasukan -->
+            <article class="ov-card ov-card-secondary">
+              <div class="ov-secondary-top">
+                <span class="ov-sec-label">Pemasukan Bulan Ini</span>
+                <span class="ov-badge-icon ov-badge-green">
+                  <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+                </span>
+              </div>
+              <div class="ov-sec-amount">
+                <span class="ov-rp-sm text-slate-400 font-semibold">Rp</span>
+                <strong id="income">&#8212;</strong>
+              </div>
+              <p class="ov-top-line" id="income-top">&nbsp;</p>
+            </article>
+
+            <!-- Pengeluaran -->
+            <article class="ov-card ov-card-secondary">
+              <div class="ov-secondary-top">
+                <span class="ov-sec-label">Pengeluaran Bulan Ini</span>
+                <span class="ov-badge-icon ov-badge-red">
+                  <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                </span>
+              </div>
+              <div class="ov-sec-amount">
+                <span class="ov-rp-sm text-rose-400 font-semibold">Rp</span>
+                <strong id="expense">&#8212;</strong>
+              </div>
+              <p class="ov-top-line" id="expense-top">&nbsp;</p>
+            </article>
+
+            <!-- Arus Kas Bersih: shadow/border follow the status (green = SEHAT, red = WASPADA) -->
+            <article id="net-card" class="ov-card ov-card-secondary ov-card-net">
+              <div class="ov-secondary-top">
+                <span class="ov-sec-label text-slate-700">Arus Kas Bersih</span>
+                <span id="net-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 uppercase">WASPADA</span>
+              </div>
+              <div class="ov-sec-amount">
+                <span class="ov-rp-sm text-rose-600 font-semibold">Rp</span>
+                <strong id="net">&#8212;</strong>
+              </div>
+              <div id="net-warning-note" class="ov-net-note mt-4 pt-2">
+                <p class="text-[11px] text-amber-900 font-medium leading-tight">⚠️ Pengeluaran melebihi pemasukan bulan ini.</p>
+              </div>
+            </article>
+          </div>
+
+          <!-- WARNING BANNER -->
+          <div id="warning" class="ov-warning hidden"></div>
+
+          <!-- INTERACTIVE CROSSHAIR CHART PANEL -->
+          <article class="ov-panel ov-chart-panel" data-purpose="trend-line-chart-section">
+            <div class="ov-chart-header flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
+              <div>
+                <h2 class="text-base font-bold text-slate-900 tracking-tight">Arus Kas &amp; Saldo Aset Harian</h2>
+              </div>
+              <div class="ov-chart-controls flex items-center space-x-4">
+                <div class="ov-chart-legend flex items-center space-x-3 text-xs font-medium">
+                  <span class="flex items-center space-x-1.5"><i class="asset-line w-3 h-3 rounded-full bg-[#0d7a57] inline-block"></i><span class="text-slate-600 font-semibold">Saldo Aset</span></span>
+                  <span class="flex items-center space-x-1.5"><i class="expense-line w-3 h-3 rounded-full bg-[#E05638] inline-block"></i><span class="text-slate-600 font-semibold">Pengeluaran</span></span>
+                </div>
+                <div class="time-range-wrap">
+                  <label class="time-range-label" for="time-range">Rentang</label>
+                  <select id="time-range" aria-label="Rentang waktu grafik">
+                    <option value="1day">1 hari</option>
+                    <option value="1week">1 minggu</option>
+                    <option value="1month" selected>1 bulan</option>
+                    <option value="3month">3 bulan</option>
+                    <option value="1year">1 tahun</option>
+                    <option value="all">Semua transaksi</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- Dynamic Crosshair Chart Container -->
+            <div id="daily-chart" class="daily-chart" role="img" aria-label="Grafik garis total aset dan pengeluaran per hari"></div>
+            <!-- Sub-Metrics Insights Footer -->
+            <div class="ov-chart-footer mt-4 pt-3.5 border-t border-slate-100 flex items-center gap-3 text-xs">
+              <div class="ov-chart-footer-item flex items-center space-x-2 text-slate-500">
+                <span class="material-symbols-outlined text-[16px] text-amber-600">tips_and_updates</span>
+                <span><strong>Pola Belanja:</strong> <span id="spending-pattern-val">Weekday lebih tinggi 18% dari weekend.</span></span>
+              </div>
+            </div>
+          </article>
+
+          <!-- 2-COLUMN GRID: CATEGORIES & ACCOUNTS -->
+          <div class="ov-two-col">
+            <!-- Left: Pengeluaran per Kategori -->
+            <article class="ov-panel ov-cat-panel">
+              <div class="ov-panel-head pb-3 mb-3 border-b border-slate-100">
+                <div>
+                  <h2 class="text-sm font-bold text-slate-900">Pengeluaran per Kategori</h2>
+                  <p class="text-xs text-slate-400 mt-0.5">Distribusi pengeluaran berdasarkan pos belanja aktif</p>
+                </div>
+              </div>
+              <div id="categories-chart" class="space-y-2.5"></div>
+              <div class="ov-panel-foot flex items-center justify-end pt-3 mt-3 border-t border-slate-100 text-xs">
+                <button type="button" class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1" id="manage-cats-btn">
+                  <span>Kelola Pos Kategori</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+                </button>
+              </div>
+            </article>
+
+            <!-- Right: Akun Anda -->
+            <article class="ov-panel ov-accounts-panel">
+              <div class="ov-panel-head flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                <div>
+                  <h2 class="text-sm font-bold text-slate-900">Akun &amp; Dompet Anda</h2>
+                  <p id="accounts-subtitle" class="text-xs text-slate-400 mt-0.5">0 akun aktif tersinkronisasi</p>
+                </div>
+                <button class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1" data-goto="accounts" type="button">
+                  <span>Kelola</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+                </button>
+              </div>
+              <div id="account-list" class="space-y-2.5"></div>
+              <button type="button" class="mt-3.5 w-full py-2.5 px-3 border border-dashed border-slate-300 rounded-xl text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:border-emerald-500 hover:bg-emerald-50/30 flex items-center justify-center space-x-1.5 transition-all" id="btn-add-account-overview">
+                <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                <span>Tambah Akun Baru</span>
+              </button>
+            </article>
+          </div>
+
+          <!-- RECENT TRANSACTIONS PANEL -->
+          <article class="ov-panel ov-recent-panel">
+            <div class="ov-panel-head flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 class="text-base font-bold text-slate-900 tracking-tight">Transaksi Terbaru</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Catatan aktivitas belanja &amp; pemindahan dana real-time di seluruh akun</p>
+              </div>
+              <button class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1" data-goto="transactions" type="button">
+                <span>Lihat Semua Transaksi</span>
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
+            </div>
+            <!-- Quick Filter Pills -->
+            <div class="flex items-center space-x-1.5 pb-3 border-b border-slate-100 overflow-x-auto text-xs font-semibold">
+              <button type="button" class="recent-pill active px-3 py-1.5 rounded-lg bg-emerald-700 text-white shadow-2xs" data-recent-filter="all">Semua (<span id="recent-total-count">0</span>)</button>
+              <button type="button" class="recent-pill px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" data-recent-filter="expense">Pengeluaran</button>
+              <button type="button" class="recent-pill px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" data-recent-filter="income">Pemasukan</button>
+              <button type="button" class="recent-pill px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors" data-recent-filter="transfer">Transfer Internal</button>
+            </div>
+            <div id="recent-list" class="divide-y divide-slate-100 mt-2"></div>
+          </article>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- TAB 2: TRANSAKSI & KATEGORI                                       -->
+        <!-- ================================================================== -->
+        <section id="transactions" class="hidden">
+          <div class="transaction-subnav" role="tablist" aria-label="Fitur transaksi">
+            <button type="button" role="tab" aria-selected="true" class="selected" data-transaction-tab="transactions">Transaksi</button>
+            <button type="button" role="tab" aria-selected="false" data-transaction-tab="categories">Kategori</button>
+          </div>
+
+          <!-- Subtab 2.1: Transaction List View -->
+          <div id="transaction-list-view">
+            <article class="tx-table-card">
+              <div class="ov-panel-head p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h2 class="text-base font-bold text-slate-900">Semua transaksi</h2>
+                  <p class="text-xs text-slate-500 mt-0.5">Catat, telusuri, dan kelola riwayat transaksi</p>
+                </div>
+                <a class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-1.5 rounded-xl transition" href="/api/export.csv">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span>Ekspor CSV</span>
+                </a>
+              </div>
+
+              <!-- Pencarian + filter (filter lengkap tersimpan di balik tombol Filter) -->
+              <form id="history-filters" class="history-filters" autocomplete="off" novalidate>
+                <div class="hf-bar">
+                  <label class="ui-field hf-search">
+                    <span class="material-symbols-outlined ui-field-icon" aria-hidden="true">search</span>
+                    <input id="search" name="keyword" type="search" placeholder="Cari transaksi..." aria-label="Cari transaksi">
+                    <kbd class="ui-field-kbd" aria-hidden="true">Ctrl K</kbd>
+                  </label>
+                  <button type="button" id="hf-toggle" class="hf-toggle" aria-expanded="false" aria-controls="hf-panel">
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">tune</span>
+                    <span>Filter</span>
+                    <span id="hf-count" class="hf-count" hidden></span>
+                  </button>
+                </div>
+
+                <div id="hf-panel" class="hf-panel" hidden>
+                  <div class="hf-grid">
+                    <label class="hf-field">
+                      <span class="hf-label">Jenis</span>
+                      <span class="ui-field ui-select">
+                        <select name="kind" id="type-filter">
+                          <option value="">Semua jenis</option>
+                          <option value="expense">Pengeluaran</option>
+                          <option value="income">Pemasukan</option>
+                          <option value="transfer">Transfer</option>
+                        </select>
+                        <span class="material-symbols-outlined ui-field-chevron" aria-hidden="true">expand_more</span>
+                      </span>
+                    </label>
+                    <label class="hf-field">
+                      <span class="hf-label">Kategori</span>
+                      <span class="ui-field ui-select">
+                        <select name="category" id="hf-category"><option value="">Semua kategori</option></select>
+                        <span class="material-symbols-outlined ui-field-chevron" aria-hidden="true">expand_more</span>
+                      </span>
+                    </label>
+                    <label class="hf-field">
+                      <span class="hf-label">Akun</span>
+                      <span class="ui-field ui-select">
+                        <select name="account" id="hf-account"><option value="">Semua akun</option></select>
+                        <span class="material-symbols-outlined ui-field-chevron" aria-hidden="true">expand_more</span>
+                      </span>
+                    </label>
+                    <div class="hf-field">
+                      <span class="hf-label" id="hf-amount-label">Nominal (Rp)</span>
+                      <div class="hf-period" role="group" aria-labelledby="hf-amount-label">
+                        <span class="ui-field"><input name="min" inputmode="numeric" data-money placeholder="Min" aria-label="Nominal minimal"></span>
+                        <span class="hf-sep">–</span>
+                        <span class="ui-field"><input name="max" inputmode="numeric" data-money placeholder="Maks" aria-label="Nominal maksimal"></span>
+                      </div>
+                    </div>
+
+                    <div class="hf-field hf-wide">
+                      <span class="hf-label" id="hf-period-label">Periode</span>
+                      <div class="hf-period" role="group" aria-labelledby="hf-period-label">
+                        <span class="ui-field"><input type="date" name="from" aria-label="Dari tanggal"></span>
+                        <span class="hf-sep">s.d.</span>
+                        <span class="ui-field"><input type="date" name="to" aria-label="Sampai tanggal"></span>
+                      </div>
+                      <div class="hf-chips" role="group" aria-label="Pilih periode cepat">
+                        <button type="button" data-period="today">Hari ini</button>
+                        <button type="button" data-period="7d">7 hari terakhir</button>
+                        <button type="button" data-period="month">Bulan ini</button>
+                        <button type="button" data-period="lastmonth">Bulan lalu</button>
+                        <button type="button" data-period="year">Tahun ini</button>
+                        <button type="button" data-period="all">Semua waktu</button>
+                      </div>
+                    </div>
+                    <label class="hf-field">
+                      <span class="hf-label">Urutkan</span>
+                      <span class="ui-field ui-select">
+                        <select name="order">
+                          <option value="newest">Terbaru dulu</option>
+                          <option value="oldest">Terlama dulu</option>
+                          <option value="largest">Nominal terbesar</option>
+                          <option value="smallest">Nominal terkecil</option>
+                        </select>
+                        <span class="material-symbols-outlined ui-field-chevron" aria-hidden="true">expand_more</span>
+                      </span>
+                    </label>
+                    <label class="hf-field">
+                      <span class="hf-label">Tampilkan</span>
+                      <span class="ui-field">
+                        <input name="top" inputmode="numeric" maxlength="5" placeholder="Semua" aria-describedby="hf-top-suffix">
+                        <span id="hf-top-suffix" class="hf-suffix">teratas</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Visible whenever any filter is on, even with the panel closed -->
+                <div id="hf-footer" class="hf-footer" hidden>
+                  <p id="hf-description" class="hf-description"></p>
+                  <button type="button" id="hf-reset" class="text-btn">Hapus semua filter</button>
+                </div>
+              </form>
+
+              <!-- Total hasil filter (hanya bila semua hasil satu jenis) -->
+              <div id="history-summary" class="history-summary" role="status" aria-live="polite"></div>
+
+              <!-- Table Container -->
+              <div id="all-list"></div>
+              <nav id="history-pager" class="history-pager" aria-label="Halaman riwayat transaksi"></nav>
+            </article>
+          </div>
+
+          <!-- Subtab 2.2: Category Management View -->
+          <div id="transaction-categories-view" class="hidden">
+            <div class="category-active-grid">
+              <!-- Outflow / Expense Categories -->
+              <article class="category-kind-block" data-category-block="expense">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                  <div class="flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    </span>
+                    <div class="category-kind-title">
+                      <h3>Kategori Pengeluaran</h3>
+                      <p>Pos alokasi pengeluaran bulanan</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="category-expense-list"></div>
+
+                <button type="button" class="category-add" data-add-category="expense">+ Tambah kategori pengeluaran</button>
+              </article>
+
+              <!-- Inflow / Income Categories -->
+              <article class="category-kind-block" data-category-block="income">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                  <div class="flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </span>
+                    <div class="category-kind-title">
+                      <h3>Kategori Pemasukan</h3>
+                      <p>Sumber pemasukan dan penghasilan</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="category-income-list"></div>
+
+                <button type="button" class="category-add" data-add-category="income">+ Tambah kategori pemasukan</button>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- TAB 3: BUDGETING                                                  -->
+        <!-- ================================================================== -->
+        <section id="budgetting" class="hidden">
+          <div class="budget-create-area">
+            <!-- Create / edit budget: pop-up dialog, like "Tambah akun baru" -->
+            <dialog id="budget-dialog" aria-labelledby="budget-form-title">
+            <form id="budget-form" method="dialog">
+              <div class="dialog-head">
+                <div>
+                  <div class="eyebrow" id="budget-form-eyebrow">ANGGARAN BARU</div>
+                  <h2 id="budget-form-title">Buat alokasi budget</h2>
+                  <p class="text-xs text-slate-400 mt-1">Pengeluaran kategori terpilih dihitung selama periode budget.</p>
+                </div>
+                <button id="cancel-budget-form" class="icon-btn" type="button" aria-label="Tutup form">&#215;</button>
+              </div>
+
+              <input type="hidden" name="budget_id">
+              <div class="grid grid-cols-1 gap-x-4">
+                <label>
+                  Nama budget
+                  <input name="name" maxlength="80" placeholder="Contoh: Belanja Makan & Minum" required>
+                </label>
+                <label>
+                  Nominal alokasi (Rp)
+                  <input name="amount" inputmode="numeric" data-money placeholder="500.000" required>
+                </label>
+                <label>
+                  Kategori pengeluaran
+                  <select name="category_id" id="budget-category" required></select>
+                </label>
+              </div>
+
+              <div class="budget-period-field">
+                <span class="budget-period-label" id="budget-period-label">Periode budget</span>
+                <div class="hf-period" role="group" aria-labelledby="budget-period-label">
+                  <span class="ui-field"><input type="date" name="period_start" aria-label="Tanggal mulai"></span>
+                  <span class="hf-sep">s.d.</span>
+                  <span class="ui-field"><input type="date" name="period_end" aria-label="Tanggal selesai"></span>
+                </div>
+                <div class="hf-chips">
+                  <button type="button" data-budget-period="1m">1 bulan</button>
+                </div>
+                <small class="budget-period-hint">Kosongkan kedua tanggal agar budget mengikuti bulan kalender dan berulang otomatis tiap bulan.</small>
+              </div>
+              <p id="budget-spent-hint" class="budget-spent-hint" hidden></p>
+
+              <div class="dialog-actions">
+                <button class="secondary" id="cancel-budget" type="button">Batal</button>
+                <button class="primary" type="submit" disabled><span data-busy-label="Menyimpan…">Simpan budget</span></button>
+              </div>
+            </form>
+            </dialog>
+          </div>
+
+          <!-- Budget Cards Grid Container -->
+          <div id="budget-grid" class="budget-grid"></div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- TAB 4: WISH & TARGET                                              -->
+        <!-- ================================================================== -->
+        <section id="wishes" class="hidden">
+          <!-- Monthly Projections Strip -->
+          <div id="wish-rates" class="wish-rate-section"></div>
+
+          <!-- Create / edit wish: pop-up dialog, like "Tambah akun baru" -->
+          <div class="wish-create-area">
+            <dialog id="wish-dialog" aria-labelledby="wish-form-title">
+            <form id="wish-form" method="dialog">
+              <div class="dialog-head">
+                <div>
+                  <div class="eyebrow" id="wish-form-eyebrow">IMPIAN BARU</div>
+                  <h2 id="wish-form-title">Target impian &amp; tabungan</h2>
+                </div>
+                <button id="close-wish-form" class="icon-btn" type="button" aria-label="Tutup form">&#215;</button>
+              </div>
+
+              <input type="hidden" name="wish_id">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                <label>
+                  Nama impian
+                  <input name="name" maxlength="80" placeholder="Contoh: MacBook Pro M3, Liburan Jepang" required>
+                </label>
+                <label>
+                  Harga target (Rp)
+                  <input name="target" inputmode="numeric" data-money placeholder="25.000.000" required>
+                </label>
+              </div>
+
+              <fieldset class="wish-funding">
+                <legend>Sumber dana target</legend>
+                <div class="wish-funding-options">
+                  <label class="wish-funding-option">
+                    <input type="radio" name="funding_mode" value="account">
+                    <span><b>Kantong khusus</b><small>Progres mengikuti saldo satu akun tabungan terpisah.</small></span>
+                  </label>
+                  <label class="wish-funding-option">
+                    <input type="radio" name="funding_mode" value="manual" checked>
+                    <span><b>Alokasi manual</b><small>Catat sendiri dana yang disisihkan untuk target ini.</small></span>
+                  </label>
+                </div>
+                <label data-funding-field="account" class="hidden">
+                  Akun / kantong tabungan
+                  <select name="linked_account_id"></select>
+                  <small class="wish-funding-note">Satu akun hanya bisa ditautkan ke satu target agar saldonya tidak terhitung dua kali.</small>
+                </label>
+                <label data-funding-field="manual">
+                  Dana sudah terkumpul (Rp)
+                  <input name="saved" inputmode="numeric" data-money placeholder="0">
+                </label>
+              </fieldset>
+
+              <div class="dialog-actions">
+                <button id="cancel-wish" class="secondary" type="button">Batal</button>
+                <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Simpan impian</span></button>
+              </div>
+            </form>
+            </dialog>
+          </div>
+
+          <!-- Wish Cards Grid Container -->
+          <div id="wish-list" class="wish-grid"></div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- TAB 5: BEHAVIOUR AI                                               -->
+        <!-- ================================================================== -->
+        <section id="behaviour" class="hidden">
+          <!-- Calendar Heatmap Panel -->
+          <article class="ov-panel behaviour-calendar-panel">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+              <h2 class="text-base font-bold text-slate-900">Spending Calendar</h2>
+              <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-500" for="behaviour-year">Tahun:</label>
+                <!-- Same field component as the other dropdowns, so the arrow never overlaps the year -->
+                <span class="ui-field ui-select year-select">
+                  <select id="behaviour-year" aria-label="Pilih tahun Behaviour"></select>
+                  <span class="material-symbols-outlined ui-field-chevron" aria-hidden="true">expand_more</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="behaviour-calendar-scroll">
+              <div id="spending-calendar" class="spending-calendar"></div>
+            </div>
+
+            <div class="calendar-legend">
+              <span>Lebih sedikit</span>
+              <i class="level-0"></i>
+              <i class="level-1"></i>
+              <i class="level-2"></i>
+              <i class="level-3"></i>
+              <i class="level-4"></i>
+              <span>Lebih banyak</span>
+            </div>
+          </article>
+
+          <!-- 3-Metrics Grid -->
+          <div class="behaviour-grid">
+            <!-- Hour distribution -->
+            <article class="ov-panel hour-panel">
+              <div class="hour-panel-head">
+                <h2 class="text-base font-bold text-slate-900 min-w-0">Jam Paling Sering Bertransaksi</h2>
+                <div class="seg-toggle" role="group" aria-label="Mode grafik jam">
+                  <button type="button" class="selected" data-hour-mode="count" aria-pressed="true" title="Frekuensi (jumlah transaksi)">Frekuensi</button>
+                  <button type="button" data-hour-mode="amount" aria-pressed="false" title="Total nominal (Rp)">Total Rp</button>
+                </div>
+              </div>
+              <p id="busiest-hour" class="text-xs font-bold text-emerald-700 mt-2 mb-3"></p>
+              <div id="hour-chart" class="hour-chart"></div>
+            </article>
+
+            <!-- Weekend vs Weekday -->
+            <article class="ov-panel">
+              <h2 class="text-base font-bold text-slate-900 mb-1">Weekend vs Weekday</h2>
+              <p class="text-xs text-slate-400 mb-3">Rata-rata pengeluaran per hari sejak transaksi pertama tahun ini</p>
+              <div id="spending-comparison" class="spending-comparison"></div>
+            </article>
+
+            <!-- Daily Average -->
+            <article class="ov-panel daily-average-card flex flex-col justify-between">
+              <div>
+                <h2 class="text-base font-bold text-slate-900 mb-1">Rata-rata Pengeluaran Harian</h2>
+                <p class="text-xs text-slate-400">Dihitung dari hari aktif: sejak transaksi pertama pada tahun terpilih</p>
+                <strong id="daily-spending-average" class="daily-average-value">&#8212;</strong>
+              </div>
+              <p id="daily-spending-context" class="text-xs text-slate-400 m-0"></p>
+            </article>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
+        <!-- TAB 6: AKUN & DOMPET                                              -->
+        <!-- ================================================================== -->
+        <section id="accounts" class="hidden">
+          <!-- One segmented bar: each account's share of the positive asset total -->
+          <article id="asset-composition" class="ov-panel asset-comp"></article>
+
+          <div id="account-cards" class="account-cards"></div>
+          <div id="asset-tooltip" class="calendar-tooltip" role="tooltip" hidden></div>
+        </section>
+      </div>
+    </main>
+    <!-- END: Main Viewport Content -->
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- MODALS / DIALOGS                                                       -->
+  <!-- ====================================================================== -->
+
+  <!-- DIALOG: CATAT TRANSAKSI BARU (#tx-dialog) -->
+  <dialog id="tx-dialog">
+    <form id="tx-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">CATAT AKTIVITAS</div>
+          <h2>Transaksi baru</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-tx" aria-label="Tutup">&#215;</button>
+      </div>
+
+      <!-- Smart Entry: swaps the manual inputs below for a chat box -->
+      <button type="button" id="smart-entry-toggle" class="smart-entry-banner" aria-pressed="false" aria-controls="smart-entry">
+        <span class="smart-entry-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4L12 2z"/></svg>
+        </span>
+        <span class="smart-entry-text">
+          <b>Smart Entry</b>
+          <small id="smart-entry-sub">Ketik atau foto struk, AI mengisi transaksi untuk Anda</small>
+        </span>
+        <span class="material-symbols-outlined smart-entry-arrow" aria-hidden="true">arrow_forward</span>
+      </button>
+
+      <div id="tx-manual">
+        <!-- Segmented Control Type Tabs -->
+        <div class="type-tabs">
+          <button type="button" class="selected" data-kind="expense">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <span>Pengeluaran</span>
+          </button>
+          <button type="button" data-kind="income">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            <span>Pemasukan</span>
+          </button>
+          <button type="button" data-kind="transfer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>Transfer</span>
+          </button>
+        </div>
+
+        <!-- Nominal Input -->
+        <label>
+          Nominal (Rp) *
+          <input name="amount" inputmode="numeric" data-money placeholder="25.000" required>
+          <div class="quick-amount-row">
+            <button type="button" class="pill-btn" onclick="addAmount(10000)">+10rb</button>
+            <button type="button" class="pill-btn" onclick="addAmount(20000)">+20rb</button>
+            <button type="button" class="pill-btn" onclick="addAmount(50000)">+50rb</button>
+            <button type="button" class="pill-btn" onclick="addAmount(100000)">+100rb</button>
+          </div>
+        </label>
+
+        <!-- Category & accounts: for a transfer, source and destination sit side by side -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+          <label id="category-wrap">
+            Kategori
+            <select name="category_id"></select>
+          </label>
+          <label>
+            <span id="account-label">Akun Sumber</span>
+            <select name="account_id"></select>
+          </label>
+          <label id="destination-wrap" class="hidden">
+            Akun Tujuan
+            <select name="destination_id"></select>
+          </label>
+        </div>
+
+        <!-- Description -->
+        <label>
+          <span id="description-label">Deskripsi / Catatan</span>
+          <input name="description" maxlength="300" placeholder="Contoh: Makan siang bareng tim, Bensin Pertamax">
+        </label>
+
+        <!-- Hidden AI / metadata inputs -->
+        <input type="hidden" name="request_id">
+        <input type="hidden" name="payment_method">
+        <input type="hidden" name="original_input">
+        <input type="hidden" name="receipt_file">
+        <input type="file" name="receipt" accept="image/jpeg,image/png,image/webp" hidden>
+
+        <!-- Date & Time -->
+        <label>
+          Tanggal dan waktu
+          <input name="occurred_at" type="datetime-local">
+        </label>
+
+        <!-- Form Actions -->
+        <div class="dialog-actions">
+          <button type="button" class="secondary" id="cancel-tx">Batal</button>
+          <button class="primary" type="submit" id="tx-submit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span data-busy-label="Menyimpan…">Simpan transaksi</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Smart Entry chat (replaces the manual inputs while active) -->
+      <div id="smart-entry" class="smart-entry" hidden>
+        <div id="smart-messages" class="smart-messages" role="log" aria-live="polite" aria-label="Percakapan Smart Entry"></div>
+        <div class="smart-composer">
+          <div id="smart-attachment" class="smart-attachment" hidden>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">image</span>
+            <span id="smart-attachment-name"></span>
+            <button type="button" id="smart-attachment-clear" aria-label="Hapus foto">&#215;</button>
+          </div>
+          <div class="smart-input-row">
+            <label class="smart-icon-btn" title="Lampirkan foto struk">
+              <span class="material-symbols-outlined" aria-hidden="true">add_photo_alternate</span>
+              <span class="sr-only">Lampirkan foto struk</span>
+              <input type="file" id="smart-file" accept="image/jpeg,image/png,image/webp" hidden>
+            </label>
+            <button type="button" class="smart-icon-btn" id="smart-camera" title="Ambil foto struk">
+              <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
+              <span class="sr-only">Ambil foto struk</span>
+            </button>
+            <textarea id="smart-input" rows="1" placeholder="Contoh: makan siang 32rb pakai GoPay" aria-label="Pesan Smart Entry"></textarea>
+            <button type="button" class="smart-send" id="smart-send" aria-label="Kirim">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Camera capture for receipt photos (form & Smart Entry) -->
+  <dialog id="camera-dialog" class="camera-dialog">
+    <div class="dialog-pad">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">FOTO STRUK</div>
+          <h2>Ambil foto</h2>
+        </div>
+        <button type="button" class="icon-btn" id="camera-close" aria-label="Tutup kamera">&#215;</button>
+      </div>
+      <div class="camera-preview-frame rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center mb-3">
+        <video id="receipt-camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Posisikan struk di dalam bingkai, lalu ambil foto.</p>
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="camera-cancel">Batal</button>
+        <button type="button" class="primary" id="camera-take">Ambil foto</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DIALOG: TAMBAH AKUN BARU (#account-dialog) -->
+  <dialog id="account-dialog">
+    <form id="account-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">AKUN BARU</div>
+          <h2>Tambah akun keuangan</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-account" aria-label="Tutup">&#215;</button>
+      </div>
+
+      <label>
+        Nama akun
+        <input name="name" placeholder="Contoh: Bank BCA, Mandiri Utama, GoPay" required>
+      </label>
+
+      <label>
+        Jenis akun
+        <select name="kind">
+          <option value="bank">Bank (Rekening Tabungan)</option>
+          <option value="cash">Tunai (Kas Fisik)</option>
+          <option value="ewallet">Dompet Digital (E-Wallet)</option>
+          <option value="other">Lainnya</option>
+        </select>
+      </label>
+
+      <label>
+        Saldo awal (Rp)
+        <input name="initial_balance" inputmode="numeric" data-money value="0">
+      </label>
+
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-account">Batal</button>
+        <button class="primary" type="submit">Simpan akun</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: HAPUS AKUN & ALIHKAN SALDO (#delete-account-dialog) -->
+  <dialog id="delete-account-dialog">
+    <form id="delete-account-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">HAPUS AKUN</div>
+          <h2 id="delete-account-title">Alihkan saldo akun</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-delete-account" aria-label="Tutup">&#215;</button>
+      </div>
+
+      <input type="hidden" name="account_id">
+      <p id="delete-account-message" class="text-xs text-slate-500 mb-3"></p>
+
+      <label>
+        Alihkan saldo ke akun
+        <select name="destination_id" required></select>
+      </label>
+      <small id="delete-account-hint" class="text-xs text-slate-400 block mb-4"></small>
+
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-delete-account">Batal</button>
+        <button class="primary" type="submit">Alihkan dan hapus</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: TAMBAH / EDIT KATEGORI (#category-dialog) -->
+  <dialog id="category-dialog" aria-labelledby="category-dialog-title">
+    <form id="category-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow" id="category-dialog-eyebrow">KATEGORI BARU</div>
+          <h2 id="category-dialog-title">Tambah kategori</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-category" aria-label="Tutup">&#215;</button>
+      </div>
+      <input type="hidden" name="category_id">
+      <input type="hidden" name="kind">
+
+      <div class="category-preview" aria-live="polite">
+        <span class="category-icon category-icon-lg" id="category-preview-icon"></span>
+        <div class="min-w-0">
+          <b id="category-preview-name">Nama kategori</b>
+          <small id="category-preview-kind">Pengeluaran</small>
+        </div>
+      </div>
+
+      <label>
+        Nama kategori
+        <span class="ui-field">
+          <span class="material-symbols-outlined ui-field-icon" aria-hidden="true">label</span>
+          <input name="name" maxlength="60" placeholder="Contoh: Perawatan Kucing, Kopi &amp; Snack" required autocomplete="off">
+        </span>
+      </label>
+
+      <fieldset class="category-picker">
+        <legend>Ikon emoji</legend>
+        <div class="category-emoji-row">
+          <span class="ui-field ui-field-emoji">
+            <input name="icon" maxlength="24" placeholder="+" aria-label="Emoji ikon kategori" autocomplete="off">
+          </span>
+          <small>Ketik atau tempel emoji apa pun (Windows: <kbd>Win</kbd> + <kbd>.</kbd>, Mac: <kbd>Ctrl</kbd> + <kbd>Cmd</kbd> + <kbd>Spasi</kbd>), atau pilih di bawah.</small>
+        </div>
+        <div class="emoji-grid" id="category-emoji-grid" role="group" aria-label="Pilihan emoji cepat"></div>
+      </fieldset>
+
+      <fieldset class="category-picker">
+        <legend>Warna latar ikon</legend>
+        <div class="swatch-row" id="category-swatches" role="group" aria-label="Pilihan warna latar">
+          <label class="swatch-custom" title="Pilih warna lain">
+            <input type="color" name="icon_bg" value="#d1fae5" aria-label="Warna latar kustom">
+            <span class="material-symbols-outlined" aria-hidden="true">colorize</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <button type="button" class="text-btn category-reset-icon" id="category-reset-icon">Pakai ikon bawaan</button>
+
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-category">Batal</button>
+        <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Simpan kategori</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: PROFIL (#profile-dialog) -->
+  <dialog id="profile-dialog" aria-labelledby="profile-title">
+    <form id="profile-form" method="dialog">
+      <input type="hidden" name="profile_id">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow" id="profile-eyebrow">PROFIL</div>
+          <h2 id="profile-title">Profil</h2>
+          <p class="text-xs text-slate-400 mt-1" id="profile-subtitle"></p>
+        </div>
+        <button type="button" class="icon-btn" id="close-profile" aria-label="Tutup">&#215;</button>
+      </div>
+      <div class="profile-hero">
+        <span class="profile-avatar" id="profile-avatar" aria-hidden="true">?</span>
+        <div class="min-w-0">
+          <b id="profile-display-name">Profil baru</b>
+          <small id="profile-storage">—</small>
+        </div>
+      </div>
+      <label>
+        Nama profil
+        <input name="name" maxlength="40" placeholder="Contoh: Pribadi, Usaha, Keluarga" required autocomplete="off">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="text-btn danger-text profile-delete" id="delete-profile" hidden>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span><span data-busy-label="Menghapus…">Hapus profil</span>
+        </button>
+        <button type="button" class="secondary" id="cancel-profile">Batal</button>
+        <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Simpan profil</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: KONFIRMASI GENERIK (#confirm-dialog) -->
+  <dialog id="confirm-dialog" class="confirm-dialog">
+    <form method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow" id="confirm-eyebrow">KONFIRMASI</div>
+          <h2 id="confirm-title">Lanjutkan?</h2>
+        </div>
+      </div>
+      <p id="confirm-message" class="confirm-message"></p>
+      <div class="dialog-actions">
+        <button class="secondary" value="cancel" id="confirm-cancel">Batal</button>
+        <button class="primary" value="ok" id="confirm-ok">Ya, lanjutkan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: RINCIAN TRANSAKSI BUDGET (#budget-detail-dialog) -->
+  <dialog id="budget-detail-dialog" class="detail-dialog" aria-labelledby="budget-detail-title">
+    <div class="dialog-pad">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow" id="budget-detail-period">PERIODE</div>
+          <h2 id="budget-detail-title">Rincian budget</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-budget-detail" aria-label="Tutup">&#215;</button>
+      </div>
+      <div id="budget-detail-summary" class="budget-detail-summary"></div>
+      <div id="budget-detail-list" class="budget-detail-list"></div>
+    </div>
+  </dialog>
+
+  <!-- DIALOG: TAMBAH DANA MANUAL WISH (#wish-fund-dialog) -->
+  <dialog id="wish-fund-dialog">
+    <form id="wish-fund-form" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">TAMBAH DANA</div>
+          <h2 id="wish-fund-title">Tambah dana manual</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-wish-fund" aria-label="Tutup">&#215;</button>
+      </div>
+      <input type="hidden" name="wish_id">
+      <label>
+        Nominal yang disisihkan (Rp)
+        <input name="amount" inputmode="numeric" data-money placeholder="500.000" required>
+      </label>
+      <small class="text-xs text-slate-400 block">Alokasi manual tidak memindahkan saldo akun; ini hanya catatan dana yang Anda sisihkan untuk target.</small>
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-wish-fund">Batal</button>
+        <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Tambah dana</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Floating tooltip for the spending calendar -->
+  <div id="calendar-tooltip" class="calendar-tooltip" role="tooltip" hidden></div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Application Logic Scripts -->
+  <script src="/static/app.js?v=51"></script>
+  <script src="/static/ai.js?v=51"></script>
+  <script src="/static/categories.js?v=51"></script>
+  <script src="/static/wishes.js?v=51"></script>
+  <script src="/static/budgets.js?v=51"></script>
+  <script src="/static/behaviour.js?v=51"></script>
+  <script src="/static/history.js?v=51"></script>
+  <script src="/static/profiles.js?v=51"></script>
+
+  <!-- Global Keyboard Shortcuts & Helpers -->
+  <script>
+    // Quick Amount Helper
+    window.addAmount = function(val) {
+      const input = document.querySelector('#tx-form [name=amount]');
+      if (!input) return;
+      let cur = parseInt(String(input.value || '').replace(/\D/g, ''), 10) || 0;
+      input.value = String(cur + val);
+      if (typeof formatMoneyInput === 'function') formatMoneyInput(input);
+    };
+
+
+    // Keyboard Shortcuts (N for new transaction, Ctrl/⌘K for transaction search)
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (typeof show === 'function') show('transactions');
+        document.querySelector('[data-transaction-tab="transactions"]')?.click();
+        document.getElementById('search')?.focus();
+      }
+      if (e.key === 'n' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        const addBtn = document.getElementById('add');
+        if (addBtn) addBtn.click();
+      }
+    });
+
+  </script>
+</body>
+</html>

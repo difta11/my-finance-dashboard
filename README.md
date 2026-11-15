@@ -12,11 +12,19 @@ Dashboard keuangan pribadi berbahasa Indonesia. Aplikasi Flask berjalan sebagai 
 
 Setiap deployment adalah dashboard satu pemilik dengan satu kata sandi. Orang yang men-deploy salinan repository mereka sendiri memakai project Firebase dan rahasia milik mereka. Jangan bagikan kata sandi dashboard: semua pengunjung yang bisa login ke satu deployment melihat ledger yang sama.
 
-**Foto struk:** foto baru disimpan di folder **My Finance Dashboard** pada Google Drive yang dihubungkan. Aktifkan Google Drive API, buat OAuth client tipe Web application, lalu isi `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REDIRECT_URI`, dan `GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY` di `.env` atau Vercel. Saat login ke dashboard, buka Tanya AI dan pilih **Hubungkan**. Foto diunggah ke Drive ketika transaksi disimpan; tautan file di tabel transaksi hanya dapat dibuka oleh akun Drive pemiliknya. `FIREBASE_STORAGE_BUCKET` hanya diperlukan untuk membuka struk lama yang sebelumnya tersimpan di Firebase Storage.
+**Foto struk:** foto baru disimpan di folder **My Finance Dashboard** pada Google Drive yang dihubungkan. Aktifkan Google Drive API, buat OAuth client tipe Web application, lalu isi `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REDIRECT_URI`, dan `GOOGLE_DRIVE_TOKEN_ENCRYPTION_KEY` di `.env` atau Vercel. Setelah login, buka **Catat Transaksi** → **Smart Entry**, lampirkan foto struk, lalu pilih **Hubungkan Google Drive** pada catatan foto. Foto diunggah ke Drive ketika transaksi disimpan; tautan file di tabel transaksi hanya dapat dibuka oleh akun Drive pemiliknya. `FIREBASE_STORAGE_BUCKET` hanya diperlukan untuk membuka struk lama yang sebelumnya tersimpan di Firebase Storage.
 
 ## Pengaturan lokal
 
-Salin `.env.example` menjadi `.env`, isi kredensial Firebase, Google Drive OAuth, kata sandi, dan rahasia sesi. Install Python 3.12 dan dependensi dari `requirements.txt`, kemudian jalankan `python app.py`. Firebase tetap menjadi penyimpanan; aplikasi tidak membuat database lokal.
+Salin `.env.example` menjadi `.env`, isi minimal `DASHBOARD_PASSWORD` dan `SESSION_SECRET`. Install Python 3.12 dan dependensi dari `requirements.txt`, kemudian jalankan `python app.py`.
+
+AI, Google Drive, dan Firebase bersifat opsional dan hanya diatur lewat `.env` (atau Environment Variables di Vercel); jalankan ulang aplikasi setelah mengubahnya:
+
+- **Tanpa Firebase**, data disimpan lokal di `data/local_db.json` pada komputer yang menjalankan aplikasi, jadi hanya bisa dibuka dari perangkat itu. Setelah `FIREBASE_SERVICE_ACCOUNT_BASE64` diisi, salin data lokal dengan `python scripts/migrate_local_to_firebase.py --apply` (tanpa `--apply` hanya menampilkan ringkasan). Akun/kategori bernama sama digabung, data yang sudah ada di Firebase tidak ditimpa, dan file lokal disimpan sebagai cadangan.
+- **Tanpa API key AI**, Smart Entry memberi peringatan dan transaksi tetap bisa dicatat manual.
+- **Tanpa Google Drive**, foto struk tetap dibaca AI tetapi tidak disimpan.
+
+Data lokal dan status aplikasi (profil terakhir dipakai) ada di folder `data/` (diabaikan Git; lokasi bisa diubah dengan `APP_DATA_DIR`). Di Vercel disk bersifat sementara, jadi gunakan Environment Variables dan Firebase di sana.
 
 Panduan Firebase dan Vercel: [SETUP.md](SETUP.md) · [DEPLOYMENT.md](DEPLOYMENT.md) · [Pengaturan AI](AI_SETUP.md). Lisensi: [MIT](LICENSE).
 
