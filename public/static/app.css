@@ -5124,3 +5124,57 @@ html[data-theme="dark"] .text-teal-700 { color: #5eead4; }
   color: var(--expense);
   border-color: var(--expense-border-strong);
 }
+
+/* Phones: page title (and the storage chip under it) aligned left, not centred. */
+@media (max-width: 640px) {
+  .breadcrumb-area { align-items: flex-start; text-align: left; }
+}
+
+/* Phones: the profile button is a pill with the profile name, in the same green gradient
+   as "Catat Transaksi". It takes the room left in the row; long names end in "…". */
+.mobile-profile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-700) 100%);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: var(--shadow-btn);
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.mobile-profile-trigger:hover { filter: brightness(1.08); }
+.mobile-profile-trigger:active { transform: scale(0.97); }
+.mobile-profile-trigger .material-symbols-outlined { flex-shrink: 0; }
+.mobile-profile-chevron { font-size: 18px; opacity: 0.85; margin-left: auto; }
+.mobile-profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  /* Row 1: page title, with "Catat Transaksi" on its right.
+     Row 2: profile pill (takes the rest of the width), refresh, theme. */
+  header.topbar { position: sticky; }
+  .breadcrumb-area { padding-right: 150px; min-height: 38px; justify-content: center; }
+  .head-actions { flex-wrap: nowrap; }
+  .head-actions #add { position: absolute; top: 12px; right: 20px; margin-left: 0; }
+  .mobile-account-menu { flex: 1 1 auto; min-width: 0; }
+  .head-actions #refresh, .head-actions #theme-toggle { flex-shrink: 0; }
+  /* The "N" shortcut needs a keyboard; on a phone it only takes room. */
+  .head-actions #add kbd { display: none; }
+}
+
+/* Keep the pill green while hovered or while its menu is open. */
+.action-menu-trigger.mobile-profile-trigger:hover,
+.action-menu-trigger.mobile-profile-trigger[aria-expanded="true"] {
+  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-700) 100%);
+  color: #fff;
+}
+.mobile-profile-trigger[aria-expanded="true"] .mobile-profile-chevron { transform: rotate(180deg); }
