@@ -171,3 +171,19 @@ def test_profile_has_no_email_and_can_be_deleted_with_its_data(client, data_dir)
 def test_settings_endpoints_are_gone(client):
     assert client.get("/api/settings").status_code == 404
     assert client.post("/api/settings/migration", json={"action": "migrate"}).status_code in (404, 405)
+
+
+def test_remember_me_controls_cookie_lifetime(data_dir, monkeypatch):
+    """Without "Ingat saya" the login cookie ends with the browser; with it, it lasts 30 days."""
+    import app as app_module
+
+    monkeypatch.setenv("DASHBOARD_PASSWORD", "test-pass")
+    web = app_module.app.test_client()
+    short = web.post("/api/login", json={"password": "test-pass"}).headers.get("Set-Cookie", "")
+    long = web.post("/api/login", json={"password": "test-pass", "remember": True}).headers.get("Set-Cookie", "")
+    assert "Expires=" not in short
+    from datetime import datetime, timedelta, timezone
+    from email.utils import parsedate_to_datetime
+
+    expires = parsedate_to_datetime(long.split("Expires=")[1].split(";")[0])
+    assert abs(expires - (datetime.now(timezone.utc) + timedelta(days=30))) < timedelta(minutes=5)

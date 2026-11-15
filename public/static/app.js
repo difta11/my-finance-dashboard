@@ -234,14 +234,14 @@ function addCard(label,attrs){
   </button>`;
 }
 
-/* ---------- "N baru" badge on the Transaksi menu ---------- */
+/* ---------- "+N" badge on the Transaksi menu ---------- */
 let markingSeen=false;
 
 function renderNewTransactionsBadge(){
   const badge=$('#sidebar-tx-badge'), count=Number(state.new_transactions_count)||0;
   if(!badge)return;
   badge.hidden=!count;
-  badge.textContent=count>99?'99+ baru':`${count} baru`;
+  badge.textContent=count>99?'+99':`+${count}`;
   badge.setAttribute('aria-label',`${count} transaksi baru belum dilihat`);
 }
 
@@ -859,7 +859,7 @@ function show(view){
     transactions: 'Transaksi',
     accounts: 'Akun & Dompet',
     budgetting: 'Budgeting',
-    wishes: 'Wish & Target',
+    wishes: 'Wish',
     behaviour: 'Behaviour'
   };
   $('#heading').textContent = titleMap[view] || 'Dashboard';
@@ -956,6 +956,25 @@ $$('[data-goto]').forEach(b=>b.onclick=()=>show(b.dataset.goto));
 
 $('#time-range').value='1month';
 $('#refresh').onclick=()=>load().then(()=>toast('Data berhasil dimuat ulang'));
+
+/* Light / dark mode. The choice is remembered in this browser only (the <head> script
+   applies it before the first paint); without a saved choice the app stays light. */
+(()=>{
+  const btn=$('#theme-toggle'), root=document.documentElement;
+  const sync=()=>{
+    const dark=root.dataset.theme==='dark';
+    btn.setAttribute('aria-pressed',String(dark));
+    btn.title=dark?'Mode terang':'Mode gelap';
+    btn.setAttribute('aria-label',btn.title);
+  };
+  btn.onclick=()=>{
+    const dark=root.dataset.theme!=='dark';
+    if(dark) root.dataset.theme='dark'; else delete root.dataset.theme;
+    try{ localStorage.setItem('theme',dark?'dark':'light'); }catch(e){}
+    sync();
+  };
+  sync();
+})();
 $('#time-range').onchange=load;
 
 $('#add').onclick=()=>openTxDialog();

@@ -53,6 +53,7 @@ except ValueError:
 app.config["MAX_UPLOAD_MB"] = min(requested_upload_mb, 4) if IS_VERCEL else requested_upload_mb
 app.config["MAX_UPLOAD_BYTES"] = app.config["MAX_UPLOAD_MB"] * 1024 * 1024
 # Allow room for multipart boundaries while staying below Vercel's 4.5 MB body cap.
+REMEMBER_DAYS = 30
 app.config["MAX_CONTENT_LENGTH"] = app.config["MAX_UPLOAD_BYTES"] + 256 * 1024
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -60,6 +61,9 @@ app.config.update(
     # Mobile devices reach the local app over plain HTTP on the LAN. Secure
     # cookies are enabled for the HTTPS Vercel deployment only.
     SESSION_COOKIE_SECURE=IS_VERCEL,
+    # "Ingat saya" keeps the login for this long (renewed on every visit); without it the
+    # cookie ends when the browser is closed.
+    PERMANENT_SESSION_LIFETIME=timedelta(days=REMEMBER_DAYS),
 )
 
 JAKARTA = ZoneInfo("Asia/Jakarta")
@@ -777,6 +781,7 @@ def login():
     if not secrets.compare_digest(password, str((request.json or {}).get("password", ""))):
         return jsonify(error="Kata sandi salah"), 401
     session.clear()
+    session.permanent = bool((request.json or {}).get("remember"))
     session["ok"] = True
     last = (load_state().get("profiles") or {}).get("last_used")
     if last and (last == DEFAULT_PROFILE or get_record("profiles", last)):
@@ -1536,9 +1541,12 @@ def export_csv():
     transactions.sort(key=lambda item: (str(item.get("occurred_at", "")), str(item.get("id", ""))), reverse=True)
     out = io.StringIO()
     writer = csv.writer(out)
-    writer.writerow(["Tanggal", "Jenis", "Nominal (IDR)", "Kategori", "Akun", "Tujuan", "Deskripsi", "Metode", "Input asli"])
+    writer.writerow(["Tanggal", "Jenis", "Nominal (IDR)", "Kategori", "Akun sumber", "Akun tujuan", "Deskripsi", "Metode", "Input asli"])
     for tx in transactions:
-        writer.writerow([tx.get("occurred_at", ""), tx.get("kind", ""), Decimal(int(tx.get("amount_cents", 0))) / 100, category_by_id.get(str(tx.get("category_id"))), account_by_id.get(str(tx.get("account_id"))), account_by_id.get(str(tx.get("destination_id"))), tx.get("description", ""), tx.get("payment_method", ""), tx.get("original_input", "")])
+        account = account_by_id.get(str(tx.get("account_id")))
+        # Income lands in its account: that is the destination, there is no source.
+        source, destination = (None, account) if tx.get("kind") == "income" else (account, account_by_id.get(str(tx.get("destination_id"))))
+        writer.writerow([tx.get("occurred_at", ""), tx.get("kind", ""), Decimal(int(tx.get("amount_cents", 0))) / 100, category_by_id.get(str(tx.get("category_id"))), source, destination, tx.get("description", ""), tx.get("payment_method", ""), tx.get("original_input", "")])
     return Response("\ufeff" + out.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=transaksi.csv"})
 
 
