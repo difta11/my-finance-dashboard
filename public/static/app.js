@@ -180,7 +180,6 @@ function renderAssetComposition(accounts,netAssets){
     <div class="asset-comp-head">
       <div>
         <h2>Komposisi Aset</h2>
-        <p>Persentase saldo tiap akun dari total saldo positif ${rupiah(total)}</p>
       </div>
       <div class="asset-comp-total"><small>Total aset bersih</small><b>${rupiah(netAssets)}</b></div>
     </div>`;

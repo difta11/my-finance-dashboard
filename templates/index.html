@@ -43,7 +43,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/static/app.css?v=54">
+  <link rel="stylesheet" href="/static/app.css?v=59">
 </head>
 <body>
   <div class="shell">
@@ -326,19 +326,17 @@
           <div class="ov-two-col">
             <!-- Left: Pengeluaran per Kategori -->
             <article class="ov-panel ov-cat-panel">
-              <div class="ov-panel-head pb-3 mb-3 border-b border-slate-100">
-                <div>
+              <div class="ov-panel-head flex items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100">
+                <div class="min-w-0">
                   <h2 class="text-sm font-bold text-slate-900">Pengeluaran per Kategori</h2>
                   <p class="text-xs text-slate-400 mt-0.5">Distribusi pengeluaran berdasarkan pos belanja aktif</p>
                 </div>
-              </div>
-              <div id="categories-chart" class="space-y-2.5"></div>
-              <div class="ov-panel-foot flex items-center justify-end pt-3 mt-3 border-t border-slate-100 text-xs">
-                <button type="button" class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1" id="manage-cats-btn">
-                  <span>Kelola Pos Kategori</span>
+                <button type="button" class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1 shrink-0 whitespace-nowrap" id="manage-cats-btn">
+                  <span>Kelola kategori</span>
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
                 </button>
               </div>
+              <div id="categories-chart" class="space-y-2.5"></div>
             </article>
 
             <!-- Right: Akun Anda -->
@@ -363,12 +361,12 @@
 
           <!-- RECENT TRANSACTIONS PANEL -->
           <article class="ov-panel ov-recent-panel">
-            <div class="ov-panel-head flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <div>
+            <div class="ov-panel-head flex items-center justify-between gap-3 mb-3">
+              <div class="min-w-0">
                 <h2 class="text-base font-bold text-slate-900 tracking-tight">Transaksi Terbaru</h2>
-                <p class="text-xs text-slate-400 mt-0.5">Catatan aktivitas belanja &amp; pemindahan dana real-time di seluruh akun</p>
+                <p class="text-xs text-slate-400 mt-0.5">Catatan aktivitas transaksi terbaru</p>
               </div>
-              <button class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1" data-goto="transactions" type="button">
+              <button class="text-btn text-emerald-700 font-bold hover:underline text-xs flex items-center space-x-1 shrink-0 whitespace-nowrap" data-goto="transactions" type="button">
                 <span>Lihat Semua Transaksi</span>
                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
               </button>
@@ -577,7 +575,7 @@
                   <h2 id="budget-form-title">Buat alokasi budget</h2>
                   <p class="text-xs text-slate-400 mt-1">Pengeluaran kategori terpilih dihitung selama periode budget.</p>
                 </div>
-                <button id="cancel-budget-form" class="icon-btn" type="button" aria-label="Tutup form">&#215;</button>
+                <button id="cancel-budget-form" class="icon-btn close-x" type="button" aria-label="Tutup form">&#215;</button>
               </div>
 
               <input type="hidden" name="budget_id">
@@ -638,7 +636,7 @@
                   <div class="eyebrow" id="wish-form-eyebrow">IMPIAN BARU</div>
                   <h2 id="wish-form-title">Target impian &amp; tabungan</h2>
                 </div>
-                <button id="close-wish-form" class="icon-btn" type="button" aria-label="Tutup form">&#215;</button>
+                <button id="close-wish-form" class="icon-btn close-x" type="button" aria-label="Tutup form">&#215;</button>
               </div>
 
               <input type="hidden" name="wish_id">
@@ -782,7 +780,7 @@
           <div class="eyebrow">CATAT AKTIVITAS</div>
           <h2>Transaksi baru</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-tx" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-tx" aria-label="Tutup">&#215;</button>
       </div>
 
       <!-- Smart Entry: swaps the manual inputs below for a chat box -->
@@ -916,7 +914,7 @@
           <div class="eyebrow">FOTO STRUK</div>
           <h2>Ambil foto</h2>
         </div>
-        <button type="button" class="icon-btn" id="camera-close" aria-label="Tutup kamera">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="camera-close" aria-label="Tutup kamera">&#215;</button>
       </div>
       <div class="camera-preview-frame rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center mb-3">
         <video id="receipt-camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
@@ -937,7 +935,7 @@
           <div class="eyebrow">AKUN BARU</div>
           <h2>Tambah akun keuangan</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-account" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-account" aria-label="Tutup">&#215;</button>
       </div>
 
       <label>
@@ -975,7 +973,7 @@
           <div class="eyebrow">HAPUS AKUN</div>
           <h2 id="delete-account-title">Alihkan saldo akun</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-delete-account" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-delete-account" aria-label="Tutup">&#215;</button>
       </div>
 
       <input type="hidden" name="account_id">
@@ -1002,7 +1000,7 @@
           <div class="eyebrow" id="category-dialog-eyebrow">KATEGORI BARU</div>
           <h2 id="category-dialog-title">Tambah kategori</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-category" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-category" aria-label="Tutup">&#215;</button>
       </div>
       <input type="hidden" name="category_id">
       <input type="hidden" name="kind">
@@ -1063,7 +1061,7 @@
           <h2 id="profile-title">Profil</h2>
           <p class="text-xs text-slate-400 mt-1" id="profile-subtitle"></p>
         </div>
-        <button type="button" class="icon-btn" id="close-profile" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-profile" aria-label="Tutup">&#215;</button>
       </div>
       <div class="profile-hero">
         <span class="profile-avatar" id="profile-avatar" aria-hidden="true">?</span>
@@ -1111,7 +1109,7 @@
           <div class="eyebrow" id="budget-detail-period">PERIODE</div>
           <h2 id="budget-detail-title">Rincian budget</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-budget-detail" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-budget-detail" aria-label="Tutup">&#215;</button>
       </div>
       <div id="budget-detail-summary" class="budget-detail-summary"></div>
       <div id="budget-detail-list" class="budget-detail-list"></div>
@@ -1126,7 +1124,7 @@
           <div class="eyebrow">TAMBAH DANA</div>
           <h2 id="wish-fund-title">Tambah dana manual</h2>
         </div>
-        <button type="button" class="icon-btn" id="close-wish-fund" aria-label="Tutup">&#215;</button>
+        <button type="button" class="icon-btn close-x" id="close-wish-fund" aria-label="Tutup">&#215;</button>
       </div>
       <input type="hidden" name="wish_id">
       <label>
@@ -1148,14 +1146,14 @@
   <div id="toast" class="toast"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="/static/app.js?v=54"></script>
-  <script src="/static/ai.js?v=54"></script>
-  <script src="/static/categories.js?v=54"></script>
-  <script src="/static/wishes.js?v=54"></script>
-  <script src="/static/budgets.js?v=54"></script>
-  <script src="/static/behaviour.js?v=54"></script>
-  <script src="/static/history.js?v=54"></script>
-  <script src="/static/profiles.js?v=54"></script>
+  <script src="/static/app.js?v=59"></script>
+  <script src="/static/ai.js?v=59"></script>
+  <script src="/static/categories.js?v=59"></script>
+  <script src="/static/wishes.js?v=59"></script>
+  <script src="/static/budgets.js?v=59"></script>
+  <script src="/static/behaviour.js?v=59"></script>
+  <script src="/static/history.js?v=59"></script>
+  <script src="/static/profiles.js?v=59"></script>
 
   <!-- Global Keyboard Shortcuts & Helpers -->
   <script>

@@ -4795,7 +4795,7 @@ dialog > .dialog-pad {
 /* Thin, rounded, "floating" scrollbar: transparent track, inset from the rounded corners. */
 dialog > form::-webkit-scrollbar,
 dialog > .dialog-pad::-webkit-scrollbar,
-.smart-messages::-webkit-scrollbar { width: 14px; }
+.smart-messages::-webkit-scrollbar { width: 12px; }
 
 dialog > form::-webkit-scrollbar-track,
 dialog > .dialog-pad::-webkit-scrollbar-track,
@@ -4807,7 +4807,7 @@ dialog > .dialog-pad::-webkit-scrollbar-track,
 dialog > form::-webkit-scrollbar-thumb,
 dialog > .dialog-pad::-webkit-scrollbar-thumb,
 .smart-messages::-webkit-scrollbar-thumb {
-  border: 4px solid transparent;
+  border: 3px solid transparent;
   border-radius: 999px;
   background: var(--border-strong);
   background-clip: padding-box;
@@ -5090,4 +5090,37 @@ html[data-theme="dark"] .text-teal-700 { color: #5eead4; }
 @media (max-width: 640px) {
   .nav-group { justify-content: space-evenly; padding: 0 6px; gap: 0; }
   .nav { width: auto; flex: 0 0 auto; padding: 9px 14px; }
+}
+
+/* The scrollbar used to take 12px on the right only, pushing the pop-up's content left.
+   Reserve the same gutter on both sides and take it out of the side padding: content stays
+   centred, 28px from each edge, whether the pop-up scrolls or not. */
+@supports (scrollbar-gutter: stable both-edges) {
+  dialog > form,
+  dialog > .dialog-pad {
+    scrollbar-gutter: stable both-edges;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Close (×) buttons on every pop-up and form are red. */
+.icon-btn.close-x {
+  color: var(--expense);
+  border-color: var(--expense-border);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* A pop-up focuses its first button when it opens: keep that ring red too. */
+.icon-btn.close-x:focus-visible {
+  outline: 2px solid var(--expense-border-strong);
+  outline-offset: 2px;
+}
+
+.icon-btn.close-x:hover {
+  background: var(--expense-bg);
+  color: var(--expense);
+  border-color: var(--expense-border-strong);
 }
