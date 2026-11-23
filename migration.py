@@ -4,7 +4,7 @@ Rules, chosen so a migration never duplicates or overwrites data:
 * Document IDs are kept. A document whose ID already exists in the target is skipped.
 * Accounts with the same name (spacing/case-insensitive) and categories with the same
   name + kind are merged into the existing target record instead of being duplicated;
-  every reference (transactions, budgets, wishes) is rewritten to the target ID.
+  every reference (transactions, budgets, wishes, debts) is rewritten to the target ID.
 * A budget for a category that already has an active budget in the target is skipped.
 * Running it twice is safe: everything already copied is skipped the second time.
 * Every profile is migrated: the default profile's top-level collections, the
@@ -16,8 +16,8 @@ import unicodedata
 
 from firebase_store import DEFAULT_PROFILE, scoped
 
-COLLECTIONS = ("accounts", "categories", "transactions", "budgets", "wishes", "settings", "integrations")
-PROFILE_DATA = ("accounts", "categories", "transactions", "budgets", "wishes", "settings")
+COLLECTIONS = ("accounts", "categories", "transactions", "budgets", "wishes", "debts", "settings", "integrations")
+PROFILE_DATA = ("accounts", "categories", "transactions", "budgets", "wishes", "debts", "settings")
 BATCH_LIMIT = 400  # Firestore allows 500 writes per batch
 
 
@@ -108,6 +108,15 @@ def plan_migration(source: dict, target: dict) -> tuple[list, dict]:
         if account_id:
             linked.add(str(account_id))
         copy("wishes", doc_id, data | {"linked_account_id": account_id})
+
+    for doc_id, data in source["debts"].items():
+        if doc_id in target["debts"]:
+            report["debts"]["skipped"] += 1
+        else:
+            copy("debts", doc_id, data | {
+                "account_id": remap(data.get("account_id"), account_map),
+                "category_id": remap(data.get("category_id"), category_map),
+            })
 
     for name in ("settings", "integrations"):
         for doc_id, data in source[name].items():

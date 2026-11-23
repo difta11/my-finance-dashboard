@@ -29,7 +29,7 @@ from local_store import local_client, local_db_path, reset_local_client  # noqa:
 from migration import migrate  # noqa: E402
 
 LABELS = {"accounts": "akun", "categories": "kategori", "transactions": "transaksi",
-          "budgets": "budget", "wishes": "wish", "settings": "preferensi",
+          "budgets": "budget", "wishes": "wish", "debts": "debt", "settings": "preferensi",
           "integrations": "integrasi", "profiles": "profil"}
 
 

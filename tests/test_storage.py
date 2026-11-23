@@ -168,6 +168,124 @@ def test_profile_has_no_email_and_can_be_deleted_with_its_data(client, data_dir)
     assert config_store.load_state()["profiles"]["last_used"] == "default"
 
 
+def boot_data(client):
+    return client.get("/api/bootstrap").get_json()
+
+
+def balance_of(boot, name):
+    return next(a["balance_cents"] for a in boot["accounts"] if a["name"] == name)
+
+
+def test_my_debt_paid_from_an_account_becomes_an_expense(client):
+    boot = boot_data(client)
+    assert boot["debts"] == []
+    cash = next(a for a in boot["accounts"] if a["name"] == "Cash")
+    food = next(c for c in boot["categories"] if c["kind"] == "expense")
+    expense_before, cash_before = boot["summary"]["expense_cents"], cash["balance_cents"]
+
+    base = {"direction": "mine", "name": " Budi ", "amount": "50000", "category_id": food["id"], "note": "makan"}
+    assert client.post("/api/debts", json=base | {"category_id": ""}).status_code == 400
+    assert client.post("/api/debts", json=base | {"direction": "loan"}).status_code == 400
+    assert client.post("/api/debts", json=base | {"debt_on": "2999-01-01"}).status_code == 400
+    debt_id = client.post("/api/debts", json=base).get_json()["id"]
+    boot = boot_data(client)
+    assert balance_of(boot, "Cash") == cash_before  # recording what I owe moves no money
+    debt = boot["debts"][0]
+    assert debt["name"] == "Budi" and debt["settled"] is False and debt["category"] == food["name"]
+    assert client.put(f"/api/debts/{debt_id}", json=base | {"amount": "60000"}).status_code == 200
+    assert client.delete(f"/api/categories/{food['id']}").status_code == 409  # still needed by the debt
+
+    # Ticking needs the paying account and records an expense in the debt's category.
+    assert client.post(f"/api/debts/{debt_id}/settle", json={}).status_code == 400
+    assert client.post(f"/api/debts/{debt_id}/settle", json={"account_id": cash["id"]}).status_code == 200
+    assert client.post(f"/api/debts/{debt_id}/settle", json={"account_id": cash["id"]}).status_code == 409
+    assert client.put(f"/api/debts/{debt_id}", json=base).status_code == 409
+    boot = boot_data(client)
+    debt = boot["debts"][0]
+    assert debt["settled"] and debt["account"] == "Cash" and debt["transaction_id"]
+    assert balance_of(boot, "Cash") == cash_before - 6_000_000
+    assert boot["summary"]["expense_cents"] == expense_before + 6_000_000
+    payment = next(tx for tx in boot["transactions"] if tx["id"] == debt["transaction_id"])
+    assert payment["kind"] == "expense" and payment["category_id"] == food["id"] and "Budi" in payment["description"]
+
+    # Undo removes the expense again.
+    assert client.post(f"/api/debts/{debt_id}/unsettle").status_code == 200
+    boot = boot_data(client)
+    assert balance_of(boot, "Cash") == cash_before and boot["summary"]["expense_cents"] == expense_before
+    assert boot["debts"][0]["settled"] is False and not any(tx["id"] == payment["id"] for tx in boot["transactions"])
+
+    # Deleting the payment from Transaksi reopens the debt.
+    client.post(f"/api/debts/{debt_id}/settle", json={"account_id": cash["id"]})
+    tx_id = boot_data(client)["debts"][0]["transaction_id"]
+    assert client.delete(f"/api/transactions/{tx_id}").status_code == 200
+    assert boot_data(client)["debts"][0]["settled"] is False
+
+    assert client.delete(f"/api/debts/{debt_id}").status_code == 200
+    assert client.delete(f"/api/debts/{debt_id}").status_code == 404
+    assert boot_data(client)["debts"] == []
+
+
+def test_others_debt_moves_balance_without_income_or_expense(client):
+    boot = boot_data(client)
+    cash = next(a for a in boot["accounts"] if a["name"] == "Cash")
+    other = next(a for a in boot["accounts"] if a["id"] != cash["id"])
+    summary, cash_before, tx_count = boot["summary"], cash["balance_cents"], len(boot["transactions"])
+
+    base = {"direction": "theirs", "name": "Sari", "amount": "75000", "account_id": cash["id"]}
+    assert client.post("/api/debts", json=base | {"account_id": ""}).status_code == 400
+    debt_id = client.post("/api/debts", json=base).get_json()["id"]
+    boot = boot_data(client)
+    assert balance_of(boot, "Cash") == cash_before - 7_500_000
+    assert boot["summary"]["assets_cents"] == summary["assets_cents"] - 7_500_000
+    assert (boot["summary"]["income_cents"], boot["summary"]["expense_cents"]) == (summary["income_cents"], summary["expense_cents"])
+    assert boot["daily"][-1]["assets_cents"] == boot["summary"]["assets_cents"]  # asset line agrees
+    assert len(boot["transactions"]) == tx_count
+    # The money has to come back somewhere: the account cannot be archived meanwhile.
+    assert client.delete(f"/api/accounts/{cash['id']}", json={"destination_id": other["id"]}).status_code == 409
+
+    assert client.post(f"/api/debts/{debt_id}/settle", json={}).status_code == 200
+    boot = boot_data(client)
+    assert boot["debts"][0]["settled"] and boot["debts"][0]["account"] == "Cash"
+    assert balance_of(boot, "Cash") == cash_before
+    assert boot["summary"]["income_cents"] == summary["income_cents"]  # not income
+    assert boot["daily"][-1]["assets_cents"] == boot["summary"]["assets_cents"]
+    assert len(boot["transactions"]) == tx_count
+
+    assert client.post(f"/api/debts/{debt_id}/unsettle").status_code == 200
+    assert balance_of(boot_data(client), "Cash") == cash_before - 7_500_000
+    assert client.delete(f"/api/debts/{debt_id}").status_code == 200  # recorded by mistake: money back
+    assert balance_of(boot_data(client), "Cash") == cash_before
+
+
+def test_debts_belong_to_the_active_profile(client, data_dir):
+    import local_store
+
+    food = next(c for c in boot_data(client)["categories"] if c["kind"] == "expense")
+    client.post("/api/debts", json={"direction": "mine", "name": "Budi", "amount": "1000", "category_id": food["id"]})
+    usaha = next(p for p in client.post("/api/profiles", json={"name": "Usaha"}).get_json()["profiles"] if p["name"] == "Usaha")
+    boot = boot_data(client)
+    assert boot["debts"] == []
+    cash = next(a for a in boot["accounts"] if a["name"] == "Cash")
+    client.post("/api/debts", json={"direction": "theirs", "name": "Klien", "amount": "2000", "account_id": cash["id"]})
+    assert client.get(f"/api/profiles/{usaha['id']}/summary").get_json()["counts"]["debts"] == 1
+    client.delete(f"/api/profiles/{usaha['id']}")
+    assert [item["name"] for item in boot_data(client)["debts"]] == ["Budi"]
+    assert not any(usaha["id"] in key and docs for key, docs in local_store.local_client().data.items())
+
+
+def test_migration_copies_debts_and_remaps_accounts(tmp_path):
+    local, remote = LocalClient(tmp_path / "local.json"), LocalClient(tmp_path / "remote.json")
+    local.collection("accounts").document("L-cash").set({"name": "Cash", "active": True})
+    remote.collection("accounts").document("R-cash").set({"name": " cash ", "active": True})
+    local.collection("debts").document("d1").set({"direction": "theirs", "name": "Sari", "amount_cents": 100, "account_id": "L-cash"})
+    local.collection("debts").document("d2").set({"direction": "mine", "name": "Lokal", "amount_cents": 7})
+    remote.collection("debts").document("d2").set({"direction": "mine", "name": "Sudah ada", "amount_cents": 5})
+    report = migrate(local, remote)
+    assert report["debts"] == {"copied": 1, "merged": 0, "skipped": 1}
+    assert remote.collection("debts").document("d1").get().to_dict()["account_id"] == "R-cash"
+    assert remote.collection("debts").document("d2").get().to_dict()["name"] == "Sudah ada"
+
+
 def test_settings_endpoints_are_gone(client):
     assert client.get("/api/settings").status_code == 404
     assert client.post("/api/settings/migration", json={"action": "migrate"}).status_code in (404, 405)

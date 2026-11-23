@@ -82,7 +82,7 @@ def storage_mode() -> str:
 DEFAULT_PROFILE = "default"
 # Collections that belong to one profile. Everything else (profiles list, Drive integration)
 # is shared by the whole login.
-PROFILE_COLLECTIONS = frozenset({"accounts", "categories", "transactions", "budgets", "wishes", "settings"})
+PROFILE_COLLECTIONS = frozenset({"accounts", "categories", "transactions", "budgets", "wishes", "debts", "settings"})
 _profile_resolver = lambda: DEFAULT_PROFILE  # noqa: E731  (app.py points this at the session)
 
 

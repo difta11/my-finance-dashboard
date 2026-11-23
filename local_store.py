@@ -18,7 +18,7 @@ from google.api_core.exceptions import Conflict, NotFound
 from config_store import data_dir, write_json_atomic
 
 ID_ALPHABET = string.ascii_letters + string.digits
-DATA_COLLECTIONS = ("accounts", "categories", "transactions", "budgets", "wishes")
+DATA_COLLECTIONS = ("accounts", "categories", "transactions", "budgets", "wishes", "debts")
 
 
 def new_id() -> str:
@@ -169,7 +169,7 @@ class LocalClient:
     def has_user_data(self) -> bool:
         """True when anything beyond the auto-created default accounts/categories exists."""
         counts = self.counts()
-        return (any(counts[name] for name in ("transactions", "budgets", "wishes"))
+        return (any(counts[name] for name in ("transactions", "budgets", "wishes", "debts"))
                 or self._non_default_entities()
                 or any(pid != "default" for pid in self.data.get("profiles", {})))
 

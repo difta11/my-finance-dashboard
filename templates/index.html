@@ -43,7 +43,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/static/app.css?v=65">
+  <link rel="stylesheet" href="/static/app.css?v=66">
 </head>
 <body>
   <div class="shell">
@@ -125,6 +125,18 @@
                 </svg>
               </span>
               <span>Wish</span>
+            </div>
+          </button>
+
+          <!-- Debt: My Debt (utang saya) & Other's Debt (orang berutang ke saya) -->
+          <button class="nav" data-view="debts" type="button">
+            <div class="nav-left">
+              <span class="nav-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                </svg>
+              </span>
+              <span>Debt</span>
             </div>
           </button>
 
@@ -689,6 +701,46 @@
         </section>
 
         <!-- ================================================================== -->
+        <!-- TAB: DEBT                                                          -->
+        <!-- My Debt: ticking pays it from an account (pop-up) = expense.      -->
+        <!-- Other's Debt: recording takes money out of an account, ticking    -->
+        <!-- puts it back. Neither step is income or expense.                  -->
+        <!-- ================================================================== -->
+        <section id="debts" class="hidden">
+          <div class="debt-columns">
+            <article class="panel debt-block is-mine" aria-labelledby="debt-mine-title">
+              <header class="debt-block-head">
+                <div class="min-w-0">
+                  <h2 id="debt-mine-title">My Debt</h2>
+                  <p>Utang saya ke orang lain. Saat dicentang, dibayar dari akun pilihanmu dan dicatat sebagai pengeluaran.</p>
+                </div>
+                <div class="debt-block-total"><small>Belum lunas</small><b id="debt-mine-total">Rp 0</b></div>
+              </header>
+              <ul class="debt-list" id="debt-mine-list" aria-label="Daftar My Debt"></ul>
+              <button type="button" class="add-card debt-add" data-add-debt="mine">
+                <span class="add-card-plus" aria-hidden="true"><span class="material-symbols-outlined">add</span></span>
+                <span class="add-card-label">Tambah My Debt</span>
+              </button>
+            </article>
+
+            <article class="panel debt-block is-theirs" aria-labelledby="debt-theirs-title">
+              <header class="debt-block-head">
+                <div class="min-w-0">
+                  <h2 id="debt-theirs-title">Other's Debt</h2>
+                  <p>Uang saya yang dipinjam orang lain. Saldo akun berkurang saat dicatat dan kembali saat dicentang (bukan pemasukan).</p>
+                </div>
+                <div class="debt-block-total"><small>Belum lunas</small><b id="debt-theirs-total">Rp 0</b></div>
+              </header>
+              <ul class="debt-list" id="debt-theirs-list" aria-label="Daftar Other's Debt"></ul>
+              <button type="button" class="add-card debt-add" data-add-debt="theirs">
+                <span class="add-card-plus" aria-hidden="true"><span class="material-symbols-outlined">add</span></span>
+                <span class="add-card-label">Tambah Other's Debt</span>
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <!-- ================================================================== -->
         <!-- TAB 5: BEHAVIOUR AI                                               -->
         <!-- ================================================================== -->
         <section id="behaviour" class="hidden">
@@ -769,6 +821,11 @@
     </main>
     <!-- END: Main Viewport Content -->
   </div>
+
+  <!-- Phones only: floating "Catat Transaksi" (the header button is hidden there) -->
+  <button type="button" class="tx-fab" id="add-fab" aria-label="Catat Transaksi" title="Catat Transaksi">
+    <span class="material-symbols-outlined" aria-hidden="true">add</span>
+  </button>
 
   <!-- ====================================================================== -->
   <!-- MODALS / DIALOGS                                                       -->
@@ -898,35 +955,23 @@
               <span class="material-symbols-outlined" aria-hidden="true">photo_camera</span>
               <span class="sr-only">Ambil foto struk</span>
             </button>
+            <!-- Phones: opens the camera app directly (no pop-up) -->
+            <input type="file" id="smart-camera-file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden tabindex="-1">
             <textarea id="smart-input" rows="1" placeholder="Contoh: makan siang 32rb pakai GoPay" aria-label="Pesan Smart Entry"></textarea>
             <button type="button" class="smart-send" id="smart-send" aria-label="Kirim">
               <span class="material-symbols-outlined" aria-hidden="true">send</span>
             </button>
           </div>
         </div>
+
+        <!-- Desktop: the webcam opens right here over the chat (no pop-up) -->
+        <div id="smart-camera-view" class="smart-camera" hidden>
+          <video id="smart-camera-video" autoplay playsinline muted></video>
+          <button type="button" class="icon-btn close-x" id="smart-camera-close" aria-label="Tutup kamera">&#215;</button>
+          <button type="button" class="smart-camera-shutter" id="smart-camera-shutter" aria-label="Ambil foto" title="Ambil foto"></button>
+        </div>
       </div>
     </form>
-  </dialog>
-
-  <!-- Camera capture for receipt photos (form & Smart Entry) -->
-  <dialog id="camera-dialog" class="camera-dialog">
-    <div class="dialog-pad">
-      <div class="dialog-head">
-        <div>
-          <div class="eyebrow">FOTO STRUK</div>
-          <h2>Ambil foto</h2>
-        </div>
-        <button type="button" class="icon-btn close-x" id="camera-close" aria-label="Tutup kamera">&#215;</button>
-      </div>
-      <div class="camera-preview-frame rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center mb-3">
-        <video id="receipt-camera-preview" autoplay playsinline class="w-full h-full object-cover"></video>
-      </div>
-      <p class="text-xs text-slate-500 mb-4">Posisikan struk di dalam bingkai, lalu ambil foto.</p>
-      <div class="dialog-actions">
-        <button type="button" class="secondary" id="camera-cancel">Batal</button>
-        <button type="button" class="primary" id="camera-take">Ambil foto</button>
-      </div>
-    </div>
   </dialog>
 
   <!-- DIALOG: TAMBAH AKUN BARU (#account-dialog) -->
@@ -1141,6 +1186,77 @@
     </form>
   </dialog>
 
+  <!-- DIALOG: CATAT / EDIT DEBT (#debt-dialog) -->
+  <dialog id="debt-dialog" aria-labelledby="debt-form-title">
+    <form id="debt-form" method="dialog" novalidate>
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow" id="debt-form-eyebrow">MY DEBT</div>
+          <h2 id="debt-form-title">Catat utang saya</h2>
+        </div>
+        <button type="button" class="icon-btn close-x" id="close-debt-form" aria-label="Tutup">&#215;</button>
+      </div>
+      <input type="hidden" name="debt_id">
+      <input type="hidden" name="direction" value="mine">
+      <label>
+        <span id="debt-name-label">Utang ke siapa</span>
+        <input name="name" maxlength="80" placeholder="Contoh: Budi" required>
+      </label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        <label>
+          Nominal (Rp)
+          <input name="amount" inputmode="numeric" data-money placeholder="150.000" required>
+        </label>
+        <label>
+          Tanggal
+          <span class="ui-field"><input type="date" name="debt_on" required></span>
+        </label>
+      </div>
+      <label data-debt-field="mine">
+        Kategori pengeluaran
+        <select name="category_id"></select>
+        <small class="debt-field-hint">Saat dicentang lunas, pembayarannya dicatat sebagai pengeluaran kategori ini.</small>
+      </label>
+      <label data-debt-field="theirs" class="hidden">
+        Diambil dari akun
+        <select name="account_id"></select>
+        <small class="debt-field-hint">Saldo akun ini langsung berkurang, lalu kembali saat dicentang lunas. Tidak dihitung pemasukan atau pengeluaran.</small>
+      </label>
+      <label>
+        <span>Catatan <small class="debt-field-hint">(opsional)</small></span>
+        <input name="note" maxlength="120" placeholder="Contoh: patungan tiket konser">
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-debt-form">Batal</button>
+        <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Simpan</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- DIALOG: BAYAR MY DEBT (#debt-pay-dialog), opened by ticking a My Debt -->
+  <dialog id="debt-pay-dialog" aria-labelledby="debt-pay-title">
+    <form id="debt-pay-form" method="dialog" novalidate>
+      <div class="dialog-head">
+        <div>
+          <div class="eyebrow">TANDAI LUNAS</div>
+          <h2 id="debt-pay-title">Bayar utang</h2>
+        </div>
+        <button type="button" class="icon-btn close-x" id="close-debt-pay" aria-label="Tutup">&#215;</button>
+      </div>
+      <input type="hidden" name="debt_id">
+      <div id="debt-pay-summary" class="debt-pay-summary"></div>
+      <label>
+        Bayar dari akun
+        <select name="account_id" required></select>
+      </label>
+      <small class="debt-field-hint block">Dicatat sebagai pengeluaran hari ini dan muncul di Transaksi.</small>
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="cancel-debt-pay">Batal</button>
+        <button class="primary" type="submit"><span data-busy-label="Menyimpan…">Bayar &amp; tandai lunas</span></button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Floating tooltip for the spending calendar -->
   <div id="calendar-tooltip" class="calendar-tooltip" role="tooltip" hidden></div>
 
@@ -1148,14 +1264,15 @@
   <div id="toast" class="toast"></div>
 
   <!-- Application Logic Scripts -->
-  <script src="/static/app.js?v=65"></script>
-  <script src="/static/ai.js?v=65"></script>
-  <script src="/static/categories.js?v=65"></script>
-  <script src="/static/wishes.js?v=65"></script>
-  <script src="/static/budgets.js?v=65"></script>
-  <script src="/static/behaviour.js?v=65"></script>
-  <script src="/static/history.js?v=65"></script>
-  <script src="/static/profiles.js?v=65"></script>
+  <script src="/static/app.js?v=66"></script>
+  <script src="/static/ai.js?v=66"></script>
+  <script src="/static/categories.js?v=66"></script>
+  <script src="/static/wishes.js?v=66"></script>
+  <script src="/static/debts.js?v=66"></script>
+  <script src="/static/budgets.js?v=66"></script>
+  <script src="/static/behaviour.js?v=66"></script>
+  <script src="/static/history.js?v=66"></script>
+  <script src="/static/profiles.js?v=66"></script>
 
   <!-- Global Keyboard Shortcuts & Helpers -->
   <script>

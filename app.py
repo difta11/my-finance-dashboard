@@ -321,12 +321,15 @@ def ensure_defaults(accounts, categories):
     return accounts, categories
 
 
-def account_balance(account, transactions, before=None):
+def account_balance(account, transactions, before=None, debts=()):
     if not account:
         return 0
     account_id = str(account["id"])
     created = str(account.get("created_at", ""))[:10]
     total = int(account.get("initial_cents", 0) or 0) if not before or created < before else 0
+    for lent_account, day, delta in lent_movements(debts):
+        if lent_account == account_id and not (before and day >= before):
+            total += delta
     for tx in transactions:
         if before and str(tx.get("occurred_at", ""))[:10] >= before:
             continue
@@ -641,15 +644,16 @@ def active_accounts_and_transactions():
     # Resolve the active profile's store (and init the Admin client) before the parallel
     # reads: worker threads have no request, so no session and no active profile.
     client = firestore_client()
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        futures = {collection: pool.submit(list_records, collection, client) for collection in ("accounts", "categories", "transactions", "wishes", "budgets")}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futures = {collection: pool.submit(list_records, collection, client) for collection in ("accounts", "categories", "transactions", "wishes", "budgets", "debts")}
         accounts = futures["accounts"].result()
         categories = futures["categories"].result()
         transactions = futures["transactions"].result()
         wishes = futures["wishes"].result()
         budgets = futures["budgets"].result()
+        debts = futures["debts"].result()
     accounts, categories = ensure_defaults(accounts, categories)
-    return accounts, categories, transactions, wishes, budgets
+    return accounts, categories, transactions, wishes, budgets, debts
 
 
 def behavior_summary(transactions, today, selected_year):
@@ -896,7 +900,7 @@ def disconnect_google_drive():
 @login_required
 def bootstrap():
     try:
-        accounts, categories, transactions, wishes, budgets = active_accounts_and_transactions()
+        accounts, categories, transactions, wishes, budgets, debts = active_accounts_and_transactions()
         today = now_local().date()
         try:
             behavior_year = int(request.args.get("behavior_year", today.year))
@@ -930,7 +934,7 @@ def bootstrap():
         active_categories = [c for c in categories if c.get("active", True)]
         category_by_id = {str(c["id"]): c for c in categories}
         account_by_id = {str(a["id"]): a for a in accounts}
-        accts = [a | {"balance_cents": account_balance(a, transactions)} for a in active_accounts]
+        accts = [a | {"balance_cents": account_balance(a, transactions, debts=debts)} for a in active_accounts]
         tx_counts = {}
         for tx in transactions:
             if tx.get("category_id"):
@@ -980,6 +984,8 @@ def bootstrap():
                     opening_assets -= amount
                 if str(tx.get("destination_id")) in active_ids:
                     opening_assets += amount
+        lent = [move for move in lent_movements(debts) if move[0] in active_ids]
+        opening_assets += sum(delta for _, day, delta in lent if day < start)
 
         daily_map = {}
         for account in active_accounts:
@@ -1003,6 +1009,9 @@ def bootstrap():
                     point["delta_cents"] -= amount
                 if str(tx.get("destination_id")) in active_ids:
                     point["delta_cents"] += amount
+        for _, day, delta in lent:
+            if start <= day <= end:
+                daily_map.setdefault(day, {"income_cents": 0, "expense_cents": 0, "delta_cents": 0})["delta_cents"] += delta
         daily = []
         if (end_day - start_day).days <= 36525:
             assets = opening_assets
@@ -1033,7 +1042,7 @@ def bootstrap():
             "vercel": is_vercel(),
         }
         active_profile = next((item for item in profile_list() if item["id"] == current_profile_id()), None)
-        return jsonify(**new_summary, features=features, profile=active_profile, accounts=accts, categories=cats, budgets=active_budgets, wishes=wish_rows, wish_stats=wish_stats, behavior=behavior, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat, "income_categories": income_bycat})
+        return jsonify(**new_summary, features=features, profile=active_profile, accounts=accts, categories=cats, budgets=active_budgets, wishes=wish_rows, wish_stats=wish_stats, debts=debt_rows(debts, category_by_id, account_by_id), behavior=behavior, transactions=rows, csrf=session.get("csrf"), range_start=start, range_end=end, daily=daily, summary={"assets_cents": current_assets, "income_cents": income, "expense_cents": expense, "net_cents": income - expense, "categories": bycat, "income_categories": income_bycat})
     except RuntimeError as exc:
         return jsonify(error=str(exc)), 503
 
@@ -1075,13 +1084,15 @@ def accounts_api():
 def delete_account(account_id):
     data = request.json or {}
     destination_id = str(data.get("destination_id", ""))
-    accounts, _, transactions, _, _ = active_accounts_and_transactions()
+    accounts, _, transactions, _, _, debts = active_accounts_and_transactions()
     account = next((item for item in accounts if item["id"] == account_id and item.get("active", True)), None)
     if not account:
         return jsonify(error="Akun tidak ditemukan"), 404
+    if any(d.get("direction") == "theirs" and not d.get("settled") and str(d.get("account_id")) == account_id for d in debts):
+        return jsonify(error="Masih ada Other's Debt dari akun ini yang belum lunas. Tandai lunas atau hapus dulu."), 409
     if len([item for item in accounts if item.get("active", True)]) <= 1:
         return jsonify(error="Akun aktif terakhir tidak dapat dihapus"), 409
-    current_balance = account_balance(account, transactions)
+    current_balance = account_balance(account, transactions, debts=debts)
     if current_balance:
         if not destination_id or destination_id == account_id:
             return jsonify(error="Pilih akun tujuan yang berbeda untuk mengalihkan saldo"), 400
@@ -1154,6 +1165,8 @@ def delete_category(category_id):
         return jsonify(error="Kategori yang masih dipakai transaksi tidak dapat dihapus"), 409
     if any(budget.get("active", True) and str(budget.get("category_id")) == category_id for budget in list_records("budgets")):
         return jsonify(error="Kategori yang masih dipakai budget tidak dapat dihapus"), 409
+    if any(d.get("direction") == "mine" and not d.get("settled") and str(d.get("category_id")) == category_id for d in list_records("debts")):
+        return jsonify(error="Kategori yang masih dipakai utang (My Debt) belum lunas tidak dapat dihapus"), 409
     firestore_client().collection("categories").document(category_id).update({"active": False})
     return jsonify(ok=True)
 
@@ -1232,6 +1245,161 @@ def delete_wish(wish_id):
     if not get_record("wishes", wish_id):
         return jsonify(error="Impian tidak ditemukan"), 404
     delete_record("wishes", wish_id)
+    return jsonify(ok=True)
+
+
+# Debt: two checklists.
+# * "mine" (My Debt): money I owe. Ticking it records a real expense transaction from the
+#   account chosen at that moment, in the debt's expense category.
+# * "theirs" (Other's Debt): money someone owes me. Recording it takes the amount out of the
+#   chosen account right away; ticking it puts the amount back. Neither step is income or
+#   expense, so no transaction is written: see lent_movements().
+DEBT_DIRECTIONS = ("mine", "theirs")
+
+
+def lent_movements(debts):
+    """(account_id, day, delta) for every Other's Debt: out on its date, back in once settled."""
+    for debt in debts or ():
+        if debt.get("direction") != "theirs" or not debt.get("account_id"):
+            continue
+        amount = int(debt.get("amount_cents", 0) or 0)
+        account_id = str(debt["account_id"])
+        yield account_id, str(debt.get("debt_on") or debt.get("created_at") or "")[:10], -amount
+        if debt.get("settled"):
+            yield account_id, str(debt.get("settled_at") or "")[:10], amount
+
+
+def debt_fields(data, direction):
+    """Validate debt input. Returns (fields, None) or (None, (message, status))."""
+    name = " ".join(str(data.get("name", "")).split())
+    if not name or len(name) > 80:
+        return None, ("Nama wajib diisi (maks. 80 karakter)", 400)
+    note = " ".join(str(data.get("note") or "").split())
+    if len(note) > 120:
+        return None, ("Catatan maksimal 120 karakter", 400)
+    try:
+        amount = money(data.get("amount"))
+    except ValueError as exc:
+        return None, (str(exc), 400)
+    today = now_local().date()
+    raw_day = str(data.get("debt_on") or "").strip()
+    debt_on = parse_day(raw_day) if raw_day else today
+    if not debt_on:
+        return None, ("Tanggal tidak valid", 400)
+    if debt_on > today:
+        return None, ("Tanggal tidak boleh di masa depan", 400)
+    fields = {"name": name, "note": note, "amount_cents": amount, "debt_on": debt_on.isoformat()}
+    if direction == "mine":
+        category = get_record("categories", str(data.get("category_id") or ""))
+        if not category or not category.get("active", True) or category.get("kind") != "expense":
+            return None, ("Pilih kategori pengeluaran untuk utang ini", 400)
+        fields["category_id"] = category["id"]
+    else:
+        account = get_record("accounts", str(data.get("account_id") or ""))
+        if not account or not account.get("active", True):
+            return None, ("Pilih akun aktif sumber uang yang dipinjamkan", 400)
+        fields["account_id"] = account["id"]
+    return fields, None
+
+
+def debt_rows(debts, category_by_id, account_by_id) -> list[dict]:
+    """Display names attached; unpaid first (newest date first), then paid (latest first)."""
+    rows = [debt | {
+        "settled": bool(debt.get("settled")),
+        "category": category_by_id.get(str(debt.get("category_id")), {}).get("name"),
+        "account": account_by_id.get(str(debt.get("account_id")), {}).get("name"),
+    } for debt in debts if debt.get("direction") in DEBT_DIRECTIONS]
+    open_rows = sorted((d for d in rows if not d["settled"]), key=lambda d: (str(d.get("debt_on", "")), str(d.get("created_at", ""))), reverse=True)
+    paid_rows = sorted((d for d in rows if d["settled"]), key=lambda d: str(d.get("settled_at", "")), reverse=True)
+    return open_rows + paid_rows
+
+
+@app.post("/api/debts")
+@login_required
+def create_debt():
+    data = request.json or {}
+    direction = str(data.get("direction") or "")
+    if direction not in DEBT_DIRECTIONS:
+        return jsonify(error="Jenis debt tidak valid"), 400
+    fields, error = debt_fields(data, direction)
+    if error:
+        return jsonify(error=error[0]), error[1]
+    record = fields | {"direction": direction, "settled": False, "settled_at": None, "transaction_id": None, "created_at": stamp_now()}
+    if direction == "mine":
+        record["account_id"] = None  # the paying account is chosen when it is ticked
+    return jsonify(ok=True, id=create_record("debts", record))
+
+
+@app.put("/api/debts/<debt_id>")
+@login_required
+def update_debt(debt_id):
+    debt = get_record("debts", debt_id)
+    if not debt:
+        return jsonify(error="Debt tidak ditemukan"), 404
+    if debt.get("settled"):
+        return jsonify(error="Debt yang sudah lunas tidak bisa diubah. Batalkan status lunas dulu."), 409
+    fields, error = debt_fields(request.json or {}, debt.get("direction"))
+    if error:
+        return jsonify(error=error[0]), error[1]
+    firestore_client().collection("debts").document(debt_id).update(fields | {"updated_at": stamp_now()})
+    return jsonify(ok=True)
+
+
+@app.post("/api/debts/<debt_id>/settle")
+@login_required
+def settle_debt(debt_id):
+    """Tick a debt. My Debt needs the paying account and becomes an expense transaction."""
+    debt = get_record("debts", debt_id)
+    if not debt:
+        return jsonify(error="Debt tidak ditemukan"), 404
+    if debt.get("settled"):
+        return jsonify(error="Debt ini sudah lunas"), 409
+    client = firestore_client()
+    now = stamp_now()
+    fields = {"settled": True, "settled_at": now, "updated_at": now}
+    if debt.get("direction") == "mine":
+        account = get_record("accounts", str((request.json or {}).get("account_id") or ""))
+        if not account or not account.get("active", True):
+            return jsonify(error="Pilih akun untuk membayar utang ini"), 400
+        category = get_record("categories", str(debt.get("category_id") or ""))
+        if not category or not category.get("active", True) or category.get("kind") != "expense":
+            return jsonify(error="Kategori utang ini sudah tidak aktif. Edit dan pilih kategori lain."), 409
+        description = "Bayar utang ke " + str(debt.get("name", "")) + (f" ({debt['note']})" if debt.get("note") else "")
+        tx_ref = client.collection("transactions").document()
+        batch = client.batch()
+        batch.set(tx_ref, {"kind": "expense", "amount_cents": int(debt.get("amount_cents", 0)), "category_id": category["id"], "account_id": account["id"], "destination_id": None, "description": description[:300], "payment_method": "", "original_input": "Pelunasan utang (Debt)", "occurred_at": now, "created_at": now, "receipt_file": None, "receipt_drive_id": None, "receipt_drive_url": None, "receipt_name": None, "debt_id": debt_id})
+        batch.update(client.collection("debts").document(debt_id), fields | {"account_id": account["id"], "transaction_id": tx_ref.id})
+        batch.commit()
+    else:
+        client.collection("debts").document(debt_id).update(fields)
+    return jsonify(ok=True)
+
+
+@app.post("/api/debts/<debt_id>/unsettle")
+@login_required
+def unsettle_debt(debt_id):
+    """Undo "Lunas". For My Debt the payment transaction is removed again."""
+    debt = get_record("debts", debt_id)
+    if not debt:
+        return jsonify(error="Debt tidak ditemukan"), 404
+    if not debt.get("settled"):
+        return jsonify(error="Debt ini belum lunas"), 409
+    fields = {"settled": False, "settled_at": None, "updated_at": stamp_now()}
+    if debt.get("direction") == "mine":
+        if debt.get("transaction_id"):
+            delete_record("transactions", debt["transaction_id"])
+        fields |= {"account_id": None, "transaction_id": None}
+    firestore_client().collection("debts").document(debt_id).update(fields)
+    return jsonify(ok=True)
+
+
+@app.delete("/api/debts/<debt_id>")
+@login_required
+def delete_debt(debt_id):
+    """Delete the record only. A paid My Debt keeps its expense transaction."""
+    if not get_record("debts", debt_id):
+        return jsonify(error="Debt tidak ditemukan"), 404
+    delete_record("debts", debt_id)
     return jsonify(ok=True)
 
 
@@ -1510,6 +1678,9 @@ def delete_transaction(transaction_id):
         except RuntimeError as exc:
             return jsonify(error=str(exc)), 503
     delete_record("transactions", transaction_id)
+    debt = get_record("debts", str(tx["debt_id"])) if tx.get("debt_id") else None
+    if debt and debt.get("transaction_id") == transaction_id:
+        firestore_client().collection("debts").document(debt["id"]).update({"settled": False, "settled_at": None, "account_id": None, "transaction_id": None, "updated_at": stamp_now()})
     if tx.get("receipt_file"):
         blob = storage_bucket().blob("receipts/" + tx["receipt_file"])
         if blob.exists():
@@ -1534,7 +1705,7 @@ def get_receipt(filename):
 @app.get("/api/export.csv")
 @login_required
 def export_csv():
-    _, categories, transactions, _, _ = active_accounts_and_transactions()
+    _, categories, transactions, *_ = active_accounts_and_transactions()
     accounts = list_records("accounts")
     category_by_id = {str(item["id"]): item.get("name") for item in categories}
     account_by_id = {str(item["id"]): item.get("name") for item in accounts}
@@ -1757,7 +1928,7 @@ def update_profile(profile_id):
     return jsonify(profiles_payload())
 
 
-PROFILE_SUMMARY = (("transactions", "transaksi"), ("accounts", "akun"), ("budgets", "budget"), ("wishes", "wish"))
+PROFILE_SUMMARY = (("transactions", "transaksi"), ("accounts", "akun"), ("budgets", "budget"), ("wishes", "wish"), ("debts", "debt"))
 
 
 @app.get("/api/profiles/<profile_id>/summary")

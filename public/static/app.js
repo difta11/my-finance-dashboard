@@ -859,6 +859,7 @@ function show(view){
     accounts: 'Akun & Dompet',
     budgetting: 'Budgeting',
     wishes: 'Wish',
+    debts: 'Debt',
     behaviour: 'Behaviour'
   };
   $('#heading').textContent = titleMap[view] || 'Dashboard';
@@ -977,6 +978,7 @@ $('#refresh').onclick=()=>load().then(()=>toast('Data berhasil dimuat ulang'));
 $('#time-range').onchange=load;
 
 $('#add').onclick=()=>openTxDialog();
+$('#add-fab').onclick=()=>openTxDialog();
 // A closed dialog means a new entry next time, so it gets a fresh idempotency key.
 $('#tx-dialog').addEventListener('close',()=>{ if(!txSubmitting) txRequestId=null; });
 

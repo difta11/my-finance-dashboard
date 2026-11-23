@@ -30,7 +30,8 @@ Panduan Firebase dan Vercel: [SETUP.md](SETUP.md) · [DEPLOYMENT.md](DEPLOYMENT.
 
 ## Fitur
 
-- Dashboard, transaksi, akun, kategori kustom, Budgetting, Wish, dan Behaviour.
+- Dashboard, transaksi, akun, kategori kustom, Budgetting, Wish, Debt, dan Behaviour.
+- Debt: **My Debt** (utang saya) dicentang lunas lewat pop-up pilihan akun dan dicatat sebagai pengeluaran sesuai kategorinya; **Other's Debt** (uang yang dipinjam orang) langsung mengurangi saldo akun sumber dan saldo kembali saat dicentang, tanpa dihitung pemasukan/pengeluaran. Koleksi Firestore `debts` dibuat otomatis.
 - Pola pengeluaran harian, jam transaksi tersibuk, perbandingan weekday/weekend, dan rata-rata pengeluaran harian.
 - Budget per kategori pengeluaran dengan nominal terpakai, sisa dana, dan persentase otomatis.
 - Koleksi Firestore `budgets` dibuat otomatis saat budget pertama disimpan; tidak perlu dibuat manual.

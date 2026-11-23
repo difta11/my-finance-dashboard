@@ -14,42 +14,32 @@
 
   window.resetTxReceipt=()=>{ txReceipt.value=''; form.elements.receipt_file.value=''; };
 
-  /* ---------- Camera ---------- */
-  const cameraDialog=q('#camera-dialog'), cameraVideo=q('#receipt-camera-preview');
-  let cameraStream=null, cameraTarget=null;
-  const stopCamera=()=>{
-    cameraStream?.getTracks().forEach(track=>track.stop());
-    cameraStream=null;
-    cameraVideo.srcObject=null;
-  };
-  const openCamera=async target=>{
-    cameraTarget=target;
-    if(!navigator.mediaDevices?.getUserMedia){ target.click(); return; } // e.g. plain-HTTP LAN: use the file picker
-    try{
-      cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-      cameraVideo.srcObject=cameraStream;
-      cameraDialog.showModal();
-      cameraVideo.play().catch(()=>{});
-    }catch{
-      stopCamera();
-      toast('Kamera tidak dapat dibuka. Izinkan akses kamera atau pilih foto dari perangkat.');
-    }
-  };
-  q('#camera-close').onclick=q('#camera-cancel').onclick=()=>cameraDialog.close();
-  cameraDialog.addEventListener('close',stopCamera);
-  q('#camera-take').onclick=async()=>{
-    if(!cameraVideo.videoWidth){ toast('Kamera belum siap. Coba lagi sebentar.'); return; }
-    const scale=Math.min(1,2000/Math.max(cameraVideo.videoWidth,cameraVideo.videoHeight)), canvas=document.createElement('canvas');
-    canvas.width=Math.round(cameraVideo.videoWidth*scale);
-    canvas.height=Math.round(cameraVideo.videoHeight*scale);
-    canvas.getContext('2d').drawImage(cameraVideo,0,0,canvas.width,canvas.height);
+  /* ---------- Receipt photos ---------- */
+  // Any receipt photo (webcam frame or a phone camera shot) is redrawn as a JPEG of at most
+  // 2000px, so a 12+ MP phone photo still fits the upload limit.
+  const toJpeg=async(source,width,height)=>{
+    const scale=Math.min(1,2000/Math.max(width,height)), canvas=document.createElement('canvas');
+    canvas.width=Math.round(width*scale);
+    canvas.height=Math.round(height*scale);
+    canvas.getContext('2d').drawImage(source,0,0,canvas.width,canvas.height);
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.88));
-    if(!blob){ toast('Foto gagal dibuat. Coba lagi.'); return; }
-    setFile(cameraTarget,new File([blob],'struk-'+Date.now()+'.jpg',{type:'image/jpeg'}));
-    cameraDialog.close();
+    return blob&&new File([blob],'struk-'+Date.now()+'.jpg',{type:'image/jpeg'});
+  };
+  const shrinkPhoto=async file=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    try{
+      img.src=url;
+      await img.decode();
+      return await toJpeg(img,img.naturalWidth,img.naturalHeight)||file;
+    }catch{
+      return file; // the browser can't decode it: send it as is (the size check still applies)
+    }finally{
+      URL.revokeObjectURL(url);
+    }
   };
 
   /* ---------- Smart Entry chat ---------- */
+  const txDialog=q('#tx-dialog');
   const manual=q('#tx-manual'), smart=q('#smart-entry'), toggle=q('#smart-entry-toggle'), messages=q('#smart-messages');
   const input=q('#smart-input'), smartFile=q('#smart-file'), sendButton=q('#smart-send');
   const attachment=q('#smart-attachment'), attachmentName=q('#smart-attachment-name');
@@ -67,6 +57,8 @@
     if(on){
       if(!messages.children.length) welcome();
       input.focus();
+    }else{
+      stopCamera(); // leaving Smart Entry releases the webcam
     }
   };
   toggle.onclick=()=>window.setSmartEntry(smart.hidden);
@@ -108,7 +100,64 @@
     showAttachment();
   });
   q('#smart-attachment-clear').onclick=()=>{ smartFile.value=''; showAttachment(); };
-  q('#smart-camera').onclick=()=>openCamera(smartFile);
+
+  /* ---------- Camera: opens straight away, no pop-up ---------- */
+  // Phones and tablets: the phone's own camera app (file input with capture). Desktops have no
+  // camera app a page can open, so the webcam shows right inside the Smart Entry panel.
+  const nativeCamera=matchMedia('(pointer: coarse)').matches;
+  const cameraButton=q('#smart-camera'), cameraFile=q('#smart-camera-file');
+  const cameraView=q('#smart-camera-view'), cameraVideo=q('#smart-camera-video'), shutter=q('#smart-camera-shutter');
+  let cameraStream=null, cameraStarting=false;
+
+  cameraFile.addEventListener('change',async()=>{
+    const file=cameraFile.files[0];
+    cameraFile.value=''; // the same button can take the next photo
+    if(file) setFile(smartFile,await shrinkPhoto(file));
+  });
+
+  function stopCamera(){
+    cameraStream?.getTracks().forEach(track=>track.stop());
+    cameraStream=null;
+    cameraVideo.srcObject=null;
+    cameraView.hidden=true;
+  }
+  async function openCamera(){
+    if(nativeCamera){ cameraFile.click(); return; }
+    if(!navigator.mediaDevices?.getUserMedia){ smartFile.click(); return; } // e.g. plain-HTTP LAN: use the file picker
+    if(cameraStream||cameraStarting) return;
+    cameraStarting=true;
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      // Closed, or switched to the manual form, while the browser was asking for permission.
+      if(!txDialog.open||smart.hidden){ stream.getTracks().forEach(track=>track.stop()); return; }
+      cameraStream=stream;
+      cameraVideo.srcObject=stream;
+      cameraView.hidden=false;
+      cameraVideo.play().catch(()=>{});
+      shutter.focus(); // Enter or Space takes the photo
+    }catch{
+      toast('Kamera tidak dapat dibuka. Izinkan akses kamera atau pilih foto dari perangkat.');
+    }finally{
+      cameraStarting=false;
+    }
+  }
+  cameraButton.onclick=openCamera;
+  q('#smart-camera-close').onclick=()=>{ stopCamera(); cameraButton.focus(); };
+  shutter.onclick=async()=>{
+    if(!cameraVideo.videoWidth){ toast('Kamera belum siap. Coba lagi sebentar.'); return; }
+    const file=await toJpeg(cameraVideo,cameraVideo.videoWidth,cameraVideo.videoHeight);
+    if(!file){ toast('Foto gagal dibuat. Coba lagi.'); return; }
+    stopCamera();
+    setFile(smartFile,file);
+    input.focus();
+  };
+  // Esc while the webcam is on closes only the webcam, not the whole Catat Transaksi pop-up.
+  txDialog.addEventListener('cancel',e=>{
+    if(!cameraStream) return;
+    e.preventDefault();
+    stopCamera();
+    cameraButton.focus();
+  });
 
   const autoGrow=()=>{ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,140)+'px'; };
   input.addEventListener('input',autoGrow);
@@ -237,11 +286,12 @@
   // Each opening of the dialog starts with an empty conversation. openTxDialog calls this
   // directly, because the dialog's async "close" event can fire after a quick reopen.
   window.resetSmartEntry=()=>{
+    stopCamera();
     messages.innerHTML='';
     input.value=''; autoGrow();
     smartFile.value=''; showAttachment();
   };
-  q('#tx-dialog').addEventListener('close',()=>{ if(!q('#tx-dialog').open) window.resetSmartEntry(); });
+  txDialog.addEventListener('close',()=>{ if(!txDialog.open) window.resetSmartEntry(); });
 
   // Return from the Google Drive OAuth flow (started from the photo note above).
   const driveResult=new URLSearchParams(location.search).get('drive');

@@ -1117,6 +1117,11 @@ select#time-range {
   font-weight: 700;
 }
 
+/* Dark mode: the navy date/value box blended into the dark chart. Invert it like the
+   tooltips: light box, dark text. */
+html[data-theme="dark"] :is(.chart-crosshair, .chart-crosshair-y) rect { fill: var(--ink); }
+html[data-theme="dark"] :is(.chart-crosshair, .chart-crosshair-y) text { fill: var(--canvas); }
+
 /* ==========================================================================
    OVERVIEW: 2-COLUMN (CATEGORIES + ACCOUNTS)
    ========================================================================== */
@@ -2108,6 +2113,11 @@ input:focus, select:focus, textarea:focus {
 .calendar-tooltip strong { font-size: 11px; font-weight: 800; }
 .calendar-tooltip b { font-family: 'Inter', monospace; }
 .calendar-tooltip .muted { color: var(--border-strong); }
+
+/* The tooltip is inverted: its background follows --ink, which turns light in dark mode,
+   so the text has to turn dark there too (it was white on light and unreadable). */
+html[data-theme="dark"] .calendar-tooltip { color: var(--canvas); }
+html[data-theme="dark"] .calendar-tooltip .muted { color: #475569; }
 
 .calendar-cell:hover {
   transform: scale(1.3);
@@ -5034,10 +5044,11 @@ html[data-theme="dark"] .theme-toggle .theme-fill { fill: currentColor; }
   .type-tabs button { flex-direction: column; gap: 2px; padding: 8px 2px; font-size: 11px; letter-spacing: -0.01em; }
 }
 
-/* Phones: profile, refresh and theme sit together on the left, Catat Transaksi on the right. */
+/* Phones: profile on the left, refresh and theme on the right. Catat Transaksi is the
+   floating button (.tx-fab) instead. */
 @media (max-width: 640px) {
   .head-actions { justify-content: flex-start; gap: 8px; }
-  .head-actions #add { margin-left: auto; }
+  .head-actions #refresh { margin-left: auto; }
 }
 html[data-theme="dark"] :is(.bg-slate-50\/50, .bg-slate-50\/60, .bg-slate-50\/70, .hover\:bg-slate-50:hover) { background-color: var(--surface-dim); }
 html[data-theme="dark"] :is(.bg-slate-200\/80, .bg-slate-200) { background-color: var(--border); }
@@ -5104,14 +5115,81 @@ html[data-theme="dark"] .text-teal-700 { color: #5eead4; }
   }
 }
 
-/* Close (×) buttons on every pop-up and form are red. */
+/* Close (×) buttons on every pop-up and form are red. The × is drawn with two bars instead
+   of the text glyph: the glyph's height depends on the font's metrics, so it sat low and
+   off-centre. The "&#215;" stays in the HTML (hidden with font-size 0) as a no-CSS fallback. */
 .icon-btn.close-x {
+  position: relative;
   color: var(--expense);
   border-color: var(--expense-border);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
 }
+
+.icon-btn.close-x::before,
+.icon-btn.close-x::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  /* High-contrast mode would paint the bars' background away; keep the button's text colour. */
+  forced-color-adjust: none;
+}
+
+.icon-btn.close-x::before { transform: translate(-50%, -50%) rotate(45deg); }
+.icon-btn.close-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
+
+/* Desktop webcam for Smart Entry: it covers the chat panel while on, instead of opening a
+   separate pop-up. Shutter at the bottom, × in the corner. (Phones use their camera app.) */
+.smart-entry { position: relative; }
+
+.smart-camera {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #000;
+}
+
+.smart-camera[hidden] { display: none; }
+
+/* contain, not cover: the whole frame is visible, so what you see is what gets sent. */
+.smart-camera video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.smart-camera > .icon-btn.close-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.smart-camera-shutter {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  /* dark gap between the outer ring and the inner disc, like a camera app's shutter */
+  box-shadow: inset 0 0 0 3px rgba(15, 23, 42, 0.85), 0 4px 16px rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.smart-camera-shutter:hover { background: #e2e8f0; }
+.smart-camera-shutter:active { transform: translateX(-50%) scale(0.92); }
+.smart-camera-shutter:focus-visible { outline: 3px solid var(--brand-500); outline-offset: 3px; }
 
 /* A pop-up focuses its first button when it opens: keep that ring red too. */
 .icon-btn.close-x:focus-visible {
@@ -5159,15 +5237,50 @@ html[data-theme="dark"] .text-teal-700 { color: #5eead4; }
 .mobile-profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 640px) {
-  /* One row: profile pill (takes whatever width is left), refresh, theme, Catat Transaksi. */
+  /* One row: profile pill (takes whatever width is left), then refresh and theme. */
   .head-actions { flex-wrap: nowrap; gap: 6px; }
   .mobile-account-menu { flex: 1 1 auto; min-width: 0; max-width: 170px; }
   .head-actions #refresh, .head-actions #theme-toggle { flex-shrink: 0; width: 36px; }
-  .head-actions #add { flex-shrink: 0; margin-left: auto; padding: 9px 12px; gap: 4px; }
-  /* The "N" shortcut needs a keyboard; on a phone it only takes room. */
-  .head-actions #add kbd { display: none; }
   .mobile-profile-trigger { padding: 0 10px; gap: 5px; }
   .mobile-profile-chevron { display: none; }
+}
+
+/* Phones: Catat Transaksi leaves the header and becomes a round floating button,
+   bottom-right, just above the tab bar. It sits outside the header because the header's
+   backdrop-filter would pin a position:fixed child to the header instead of the screen. */
+.tx-fab { display: none; }
+
+@media (max-width: 640px) {
+  .head-actions #add { display: none; }
+
+  .tx-fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-700) 100%);
+    color: #fff;
+    box-shadow: 0 10px 25px -4px rgba(13, 122, 87, 0.45);
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tx-fab .material-symbols-outlined { font-size: 28px; line-height: 1; }
+  .tx-fab:hover { filter: brightness(1.08); }
+  .tx-fab:active { transform: scale(0.94); }
+  .tx-fab:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 3px; }
+
+  /* Room to scroll the last card above the button (tab bar 62px + gap + 56px button). */
+  main { padding-bottom: calc(148px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Keep the pill green while hovered or while its menu is open. */
@@ -5182,4 +5295,213 @@ html[data-theme="dark"] .text-teal-700 { color: #5eead4; }
 @media (max-width: 374px) {
   .mobile-profile-trigger > .material-symbols-outlined:first-child { display: none; }
   .mobile-profile-trigger { justify-content: center; }
+}
+
+/* ==========================================================================
+   DEBT TAB (#debts): My Debt and Other's Debt side by side, each a checklist
+   ending in a dashed "+" card. Unpaid box = red border; paid = green "Lunas" box.
+   ========================================================================== */
+.debt-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.debt-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.debt-block-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.debt-block-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.debt-block-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.debt-block-total { flex-shrink: 0; text-align: right; }
+
+.debt-block-total small {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+.debt-block-total b {
+  display: block;
+  margin-top: 2px;
+  font-family: 'Inter', monospace;
+  font-size: 18px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.debt-block.is-mine .debt-block-total b { color: var(--expense); }
+.debt-block.is-theirs .debt-block-total b { color: var(--brand-ink); }
+
+.debt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.debt-list:empty { display: none; }
+
+.debt-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.debt-item:hover { border-color: var(--border-strong); }
+.debt-item.is-paid { background: var(--surface-dim); }
+
+/* The tick box: empty square with a red border; once paid it reads "Lunas" in green. */
+.debt-check {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--expense);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--income-ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.debt-check:hover { background: var(--expense-bg); }
+.debt-check:active { transform: scale(0.94); }
+.debt-check:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.debt-check:disabled { cursor: progress; opacity: 0.55; }
+
+.debt-check.is-paid {
+  width: auto;
+  height: 26px;
+  padding: 0 10px;
+  border-color: var(--income);
+  background: var(--income-bg);
+}
+
+.debt-check.is-paid:hover { background: var(--income-soft); }
+
+.debt-main { flex: 1 1 auto; min-width: 0; }
+
+.debt-main b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.debt-main small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.debt-amount {
+  flex-shrink: 0;
+  font-family: 'Inter', monospace;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.debt-item.is-paid .debt-main b,
+.debt-item.is-paid .debt-amount { color: var(--muted); }
+
+/* Dashed "+" card at the end of each block (smaller than the Akun/Wish ones). */
+.debt-block .debt-add { min-height: 92px; padding: 14px; gap: 6px; }
+
+/* Pop-ups */
+.debt-field-hint {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.debt-pay-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-dim);
+}
+
+.debt-pay-summary small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.debt-pay-summary b {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+#debt-pay-form > .debt-field-hint { margin: -8px 0 4px; }
+
+@media (max-width: 760px) {
+  .debt-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .debt-block-head { flex-direction: column; gap: 8px; }
+  .debt-block-total { text-align: left; }
+  .debt-item { gap: 10px; padding: 10px 6px 10px 10px; }
+  .debt-amount { font-size: 13px; }
+}
+
+/* Seven tabs in the phone bottom bar: tighten them so the smallest phones still fit. */
+@media (max-width: 400px) {
+  .nav { padding: 9px 10px; }
 }
